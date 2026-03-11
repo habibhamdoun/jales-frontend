@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ProfileStackParamList } from '@/src/navigation/AppTabs';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { AppTabsParamList } from '@/src/navigation/AppTabs';
 import { Screen } from '@/src/components/themed/Screen';
 import { ThemedText } from '@/src/components/themed/ThemedText';
 import { ThemedCard } from '@/src/components/themed/ThemedCard';
@@ -15,16 +15,10 @@ import { Activity, ArrowUp, Minus } from 'lucide-react-native';
 
 const HomeScreen: React.FC = () => {
   const { theme } = useTheme();
-  const navigation =
-    useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabsParamList>>();
 
   // Static connected device state for testing - set to null to test unconnected state
-  const connectedDevice = {
-    name: 'JALES Shirt #1',
-    model: 'JALES Pro',
-    battery: 85,
-    lastSync: '2 mins ago',
-  };
+  const connectedDevice = null;
 
   const {
     currentScore,
@@ -35,7 +29,7 @@ const HomeScreen: React.FC = () => {
   } = mockPostureData;
 
   const handleConnect = () => {
-    navigation.navigate('Connect');
+    navigation.navigate('Profile', { screen: 'Connect' });
   };
 
   return (

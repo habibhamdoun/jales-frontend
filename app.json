@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "jales-clean",
-    "slug": "jales-clean",
+    "name": "jales",
+    "slug": "jales",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -19,12 +19,16 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.habibhamdoun.jalesclean"
+      "package": "com.habibhamdoun.jalesshirt"
     },
     "extra": {
       "eas": {
         "projectId": "64df816b-c6d6-41d1-8755-fbb95a1fe4e8"
       }
-    }
+    },
+    "plugins": [
+      "react-native-ble-plx"
+    ]
   }
 }
+ 
