@@ -226,9 +226,7 @@ const HomeScreen: React.FC = () => {
                   Roll
                 </ThemedText>
                 <ThemedText variant='title' style={styles.sensorDataValue}>
-                  {bno?.roll !== undefined
-                    ? `${bno.roll.toFixed(1)}°`
-                    : '—'}
+                  {bno?.roll !== undefined ? `${bno.roll.toFixed(1)}°` : '—'}
                 </ThemedText>
               </View>
 
@@ -238,9 +236,7 @@ const HomeScreen: React.FC = () => {
                   Pitch
                 </ThemedText>
                 <ThemedText variant='title' style={styles.sensorDataValue}>
-                  {bno?.pitch !== undefined
-                    ? `${bno.pitch.toFixed(1)}°`
-                    : '—'}
+                  {bno?.pitch !== undefined ? `${bno.pitch.toFixed(1)}°` : '—'}
                 </ThemedText>
               </View>
             </View>
@@ -260,25 +256,19 @@ const HomeScreen: React.FC = () => {
                     <ThemedText variant='caption' color={theme.mutedText}>
                       Accel X
                     </ThemedText>
-                    <ThemedText variant='body'>
-                      {mpu1.ax.toFixed(1)}
-                    </ThemedText>
+                    <ThemedText variant='body'>{mpu1.ax.toFixed(1)}</ThemedText>
                   </View>
                   <View style={styles.additionalDataItem}>
                     <ThemedText variant='caption' color={theme.mutedText}>
                       Accel Y
                     </ThemedText>
-                    <ThemedText variant='body'>
-                      {mpu1.ay.toFixed(1)}
-                    </ThemedText>
+                    <ThemedText variant='body'>{mpu1.ay.toFixed(1)}</ThemedText>
                   </View>
                   <View style={styles.additionalDataItem}>
                     <ThemedText variant='caption' color={theme.mutedText}>
                       Accel Z
                     </ThemedText>
-                    <ThemedText variant='body'>
-                      {mpu1.az.toFixed(1)}
-                    </ThemedText>
+                    <ThemedText variant='body'>{mpu1.az.toFixed(1)}</ThemedText>
                   </View>
                 </View>
                 <View style={[styles.additionalDataItems, { marginTop: 12 }]}>
@@ -286,25 +276,19 @@ const HomeScreen: React.FC = () => {
                     <ThemedText variant='caption' color={theme.mutedText}>
                       Gyro X
                     </ThemedText>
-                    <ThemedText variant='body'>
-                      {mpu1.gx.toFixed(1)}
-                    </ThemedText>
+                    <ThemedText variant='body'>{mpu1.gx.toFixed(1)}</ThemedText>
                   </View>
                   <View style={styles.additionalDataItem}>
                     <ThemedText variant='caption' color={theme.mutedText}>
                       Gyro Y
                     </ThemedText>
-                    <ThemedText variant='body'>
-                      {mpu1.gy.toFixed(1)}
-                    </ThemedText>
+                    <ThemedText variant='body'>{mpu1.gy.toFixed(1)}</ThemedText>
                   </View>
                   <View style={styles.additionalDataItem}>
                     <ThemedText variant='caption' color={theme.mutedText}>
                       Gyro Z
                     </ThemedText>
-                    <ThemedText variant='body'>
-                      {mpu1.gz.toFixed(1)}
-                    </ThemedText>
+                    <ThemedText variant='body'>{mpu1.gz.toFixed(1)}</ThemedText>
                   </View>
                 </View>
               </View>
@@ -354,7 +338,8 @@ const HomeScreen: React.FC = () => {
                     style={styles.rawDataText}
                   >
                     Accel: X={mpu1.ax.toFixed(1)}, Y={mpu1.ay.toFixed(1)}, Z=
-                    {mpu1.az.toFixed(1)}{`\n`}
+                    {mpu1.az.toFixed(1)}
+                    {`\n`}
                     Gyro: X={mpu1.gx.toFixed(1)}, Y={mpu1.gy.toFixed(1)}, Z=
                     {mpu1.gz.toFixed(1)}
                   </ThemedText>

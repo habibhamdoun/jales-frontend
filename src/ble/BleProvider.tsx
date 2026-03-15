@@ -14,7 +14,12 @@ import {
 import { BleManager, Device, State, Subscription } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
 import { BLEContextType } from './types';
-import { parseBnoPayload, parseMpuPayload, BnoData, MpuData } from '@/src/utils/bleParsers';
+import {
+  parseBnoPayload,
+  parseMpuPayload,
+  BnoData,
+  MpuData,
+} from '@/src/utils/bleParsers';
 
 global.Buffer = global.Buffer || Buffer;
 
@@ -174,7 +179,10 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!isMountedRef.current) return;
 
         if (error) {
-          console.warn('[BLE] MPU2 Monitor error (expected if not available):', error);
+          console.warn(
+            '[BLE] MPU2 Monitor error (expected if not available):',
+            error,
+          );
           return;
         }
 
@@ -204,7 +212,10 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!isMountedRef.current) return;
 
         if (error) {
-          console.warn('[BLE] MPU3 Monitor error (expected if not available):', error);
+          console.warn(
+            '[BLE] MPU3 Monitor error (expected if not available):',
+            error,
+          );
           return;
         }
 
@@ -379,7 +390,9 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error: any) {
       // Ignore BleManager destroyed error - it's harmless
       if (error?.message?.includes('destroyed')) {
-        console.log('[BLE] Device disconnected (manager was already destroyed)');
+        console.log(
+          '[BLE] Device disconnected (manager was already destroyed)',
+        );
       } else {
         console.error('[BLE] Disconnect error:', error);
         if (isMountedRef.current) {

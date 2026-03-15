@@ -49,7 +49,6 @@ const ConnectScreen: React.FC = () => {
     await disconnectDevice();
   };
 
-
   return (
     <Screen scrollable={false}>
       <View style={styles.header}>
@@ -61,7 +60,9 @@ const ConnectScreen: React.FC = () => {
       </View>
 
       {errorMsg && (
-        <ThemedCard style={[styles.errorCard, { borderLeftColor: theme.primary }]}>
+        <ThemedCard
+          style={[styles.errorCard, { borderLeftColor: theme.primary }]}
+        >
           <View style={styles.errorContent}>
             <View style={{ flex: 1 }}>
               <ThemedText variant='caption' color={theme.primary}>
