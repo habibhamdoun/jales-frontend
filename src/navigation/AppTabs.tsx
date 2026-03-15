@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '@/src/theme/useTheme';
@@ -59,6 +60,7 @@ export const AppTabs: React.FC = () => {
           paddingTop: 8,
           paddingBottom: 16,
           height: 80,
+          ...(Platform.OS === 'android' && { marginBottom: 32 }),
         },
         tabBarLabelStyle: {
           fontSize: 12,
