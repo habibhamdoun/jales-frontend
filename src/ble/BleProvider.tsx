@@ -13,13 +13,19 @@ import {
 } from 'react-native';
 import { BleManager, Device, State, Subscription } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
-import { BLEContextType } from './types';
+import { BLEContextType, TrunkNeutralReference } from './types';
 import {
   parseBnoPayload,
   parseMpuPayload,
   BnoData,
   MpuData,
 } from '@/src/utils/bleParsers';
+import { byteToBase64 } from '@/src/utils/bleUtils';
+import {
+  calculatePostureAnalysis,
+  PostureAnalysis,
+} from '@/src/utils/reba';
+import { getTrunkAngles } from '@/src/utils/posture';
 
 global.Buffer = global.Buffer || Buffer;
 
@@ -29,6 +35,7 @@ const BLE_BNO_CHARACTERISTIC = '12345678-1234-1234-1234-1234567890A1';
 const BLE_MPU1_CHARACTERISTIC = '12345678-1234-1234-1234-1234567890A2';
 const BLE_MPU2_CHARACTERISTIC = '12345678-1234-1234-1234-1234567890A3';
 const BLE_MPU3_CHARACTERISTIC = '12345678-1234-1234-1234-1234567890A4';
+const BLE_CALIBRATION_CHARACTERISTIC = '12345678-1234-1234-1234-1234567890A5';
 
 const SCAN_SECONDS = 6;
 const DEVICE_NAME = 'PostureMonitor';
@@ -55,6 +62,16 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isConnecting, setIsConnecting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+
+  // Posture analysis state
+  const [trunkNeutralReference, setTrunkNeutralReference] =
+    useState<TrunkNeutralReference | null>(null);
+  const [postureAnalysis, setPostureAnalysis] =
+    useState<PostureAnalysis | null>(null);
+
+  // Smoothing factor for exponential moving average (0-1, higher = more smoothing)
+  const SMOOTHING_FACTOR = 0.4;
+  const smoothedAnglesRef = useRef<{ pitch: number; roll: number }>({ pitch: 0, roll: 0 });
 
   // Stop scanning
   const requestAndroidBlePermissions =
@@ -124,12 +141,10 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (!characteristic?.value) {
-          console.log('[BLE] BNO notification received with no value');
           return;
         }
 
         try {
-          console.log('[BLE] BNO Raw Base64:', characteristic.value);
           const parsed = parseBnoPayload(characteristic.value);
           if (parsed) {
             setBno(parsed);
@@ -154,12 +169,10 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (!characteristic?.value) {
-          console.log('[BLE] MPU1 notification received with no value');
           return;
         }
 
         try {
-          console.log('[BLE] MPU1 Raw Base64:', characteristic.value);
           const parsed = parseMpuPayload(characteristic.value);
           if (parsed) {
             setMpu1(parsed);
@@ -187,12 +200,10 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (!characteristic?.value) {
-          console.log('[BLE] MPU2 notification received with no value');
           return;
         }
 
         try {
-          console.log('[BLE] MPU2 Raw Base64:', characteristic.value);
           const parsed = parseMpuPayload(characteristic.value);
           if (parsed) {
             setMpu2(parsed);
@@ -220,12 +231,10 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         if (!characteristic?.value) {
-          console.log('[BLE] MPU3 notification received with no value');
           return;
         }
 
         try {
-          console.log('[BLE] MPU3 Raw Base64:', characteristic.value);
           const parsed = parseMpuPayload(characteristic.value);
           if (parsed) {
             setMpu3(parsed);
@@ -408,6 +417,8 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
         setMpu1(null);
         setMpu2(null);
         setMpu3(null);
+        // Reset smoothing filter
+        smoothedAnglesRef.current = { pitch: 0, roll: 0 };
       }
     }
   }, [device]);
@@ -416,6 +427,136 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
   const clearError = useCallback(() => {
     setErrorMsg(null);
   }, []);
+
+  // Calibration helper method
+  const performCalibration = useCallback(
+    async (sensorName: string, commandByte: number): Promise<void> => {
+      if (!isMountedRef.current) return;
+
+      // Check if device is connected
+      if (!device) {
+        console.error(
+          `[BLE] Cannot calibrate ${sensorName}: no device connected`,
+        );
+        throw new Error('No device connected');
+      }
+
+      try {
+        console.log(
+          `[BLE] Calibrating ${sensorName} with command byte: ${commandByte}`,
+        );
+        console.log(
+          '[BLE] Target characteristic UUID:',
+          BLE_CALIBRATION_CHARACTERISTIC,
+        );
+
+        // Convert command byte to base64
+        const calibrationPayload = byteToBase64(commandByte);
+        console.log(
+          `[BLE] ${sensorName} calibration payload (base64):`,
+          calibrationPayload,
+        );
+
+        // Write calibration command to characteristic
+        await device.writeCharacteristicWithResponseForService(
+          BLE_SERVICE_UUID,
+          BLE_CALIBRATION_CHARACTERISTIC,
+          calibrationPayload,
+        );
+
+        if (isMountedRef.current) {
+          console.log(
+            `[BLE] ${sensorName} calibration command sent successfully`,
+          );
+          setErrorMsg(null);
+        }
+      } catch (error: any) {
+        console.error(`[BLE] ${sensorName} calibration error:`, error);
+        if (isMountedRef.current) {
+          const errorMessage =
+            error.message || `Failed to calibrate ${sensorName}`;
+          setErrorMsg(errorMessage);
+          throw error;
+        }
+      }
+    },
+    [device],
+  );
+
+  // Individual sensor calibration methods
+  const calibrateBno = useCallback(async (): Promise<void> => {
+    await performCalibration('BNO', 1);
+  }, [performCalibration]);
+
+  const calibrateMpu1 = useCallback(async (): Promise<void> => {
+    await performCalibration('MPU1', 2);
+  }, [performCalibration]);
+
+  const calibrateMpu2 = useCallback(async (): Promise<void> => {
+    await performCalibration('MPU2', 3);
+  }, [performCalibration]);
+
+  const calibrateMpu3 = useCallback(async (): Promise<void> => {
+    await performCalibration('MPU3', 4);
+  }, [performCalibration]);
+
+  // Posture analysis methods
+  const updatePostureAnalysis = useCallback(() => {
+    if (!isMountedRef.current) return;
+
+    // Need both BNO and MPU1 for complete analysis
+    if (!bno || !mpu1) {
+      setPostureAnalysis(null);
+      return;
+    }
+
+    try {
+      // Get trunk angles from MPU1
+      const { relative: trunkAngles } = getTrunkAngles(mpu1, trunkNeutralReference || undefined);
+
+      let effectiveTrunkPitch = trunkAngles?.pitch ?? 0;
+      let effectiveTrunkRoll = trunkAngles?.roll ?? 0;
+
+      // Apply exponential moving average smoothing to reduce noise
+      smoothedAnglesRef.current.pitch = 
+        SMOOTHING_FACTOR * effectiveTrunkPitch + 
+        (1 - SMOOTHING_FACTOR) * smoothedAnglesRef.current.pitch;
+      
+      smoothedAnglesRef.current.roll = 
+        SMOOTHING_FACTOR * effectiveTrunkRoll + 
+        (1 - SMOOTHING_FACTOR) * smoothedAnglesRef.current.roll;
+
+      effectiveTrunkPitch = smoothedAnglesRef.current.pitch;
+      effectiveTrunkRoll = smoothedAnglesRef.current.roll;
+
+      // Calculate posture analysis
+      const analysis = calculatePostureAnalysis(
+        bno.pitch,
+        bno.roll,
+        effectiveTrunkPitch,
+        effectiveTrunkRoll,
+      );
+
+      if (isMountedRef.current) {
+        setPostureAnalysis(analysis);
+      }
+    } catch (error) {
+      console.error('[BLE] Error calculating posture analysis:', error);
+    }
+  }, [bno, mpu1, trunkNeutralReference]);
+
+  // Set trunk neutral reference for relative posture calculation
+  const handleSetTrunkNeutralReference = useCallback(
+    (neutral: TrunkNeutralReference) => {
+      if (!isMountedRef.current) return;
+
+      console.log('[BLE] Setting trunk neutral reference:', neutral);
+      setTrunkNeutralReference(neutral);
+      // Reset smoothing filter when calibrating
+      smoothedAnglesRef.current = { pitch: 0, roll: 0 };
+    },
+    [],
+  );
 
   // Initialize BLE Manager
   useEffect(() => {
@@ -449,6 +590,11 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, [isScanning, stopScan]);
 
+  // Update posture analysis whenever sensor data changes
+  useEffect(() => {
+    updatePostureAnalysis();
+  }, [updatePostureAnalysis]);
+
   const value: BLEContextType = {
     device,
     devices,
@@ -460,10 +606,17 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
     isConnecting,
     errorMsg,
     isConnected,
+    postureAnalysis,
+    trunkNeutralReference,
+    setTrunkNeutralReference: handleSetTrunkNeutralReference,
     startScan,
     stopScan,
     connectDevice,
     disconnectDevice,
+    calibrateBno,
+    calibrateMpu1,
+    calibrateMpu2,
+    calibrateMpu3,
     clearError,
   };
 

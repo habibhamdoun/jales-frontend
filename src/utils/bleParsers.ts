@@ -33,7 +33,6 @@ export const parseBnoPayload = (base64Value: string): BnoData | null => {
       pitch: pitch_x100 / 100,
     };
 
-    console.log('[BLE Parser] BNO decoded:', result);
     return result;
   } catch (error) {
     console.error('[BLE Parser] Error parsing BNO payload:', error);
@@ -82,7 +81,6 @@ export const parseMpuPayload = (base64Value: string): MpuData | null => {
       gz,
     };
 
-    console.log('[BLE Parser] MPU decoded:', result);
     return result;
   } catch (error) {
     console.error('[BLE Parser] Error parsing MPU payload:', error);

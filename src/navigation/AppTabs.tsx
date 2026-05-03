@@ -17,6 +17,7 @@ import ProfileScreen from '@/src/screens/tabs/ProfileScreen';
 import { SummaryTopTabs } from './SummaryTopTabs';
 import ConnectScreen from '@/src/screens/stack/ConnectScreen';
 import SettingsScreen from '@/src/screens/stack/SettingsScreen';
+import CalibrationScreen from '@/src/screens/CalibrationScreen';
 
 export type AppTabsParamList = {
   Home: undefined;
@@ -29,6 +30,7 @@ export type ProfileStackParamList = {
   ProfileMain: undefined;
   Connect: undefined;
   Settings: undefined;
+  Calibration: undefined;
 };
 
 const Tab = createBottomTabNavigator<AppTabsParamList>();
@@ -40,6 +42,7 @@ const ProfileStackNavigator: React.FC = () => {
       <ProfileStack.Screen name='ProfileMain' component={ProfileScreen} />
       <ProfileStack.Screen name='Connect' component={ConnectScreen} />
       <ProfileStack.Screen name='Settings' component={SettingsScreen} />
+      <ProfileStack.Screen name='Calibration' component={CalibrationScreen} />
     </ProfileStack.Navigator>
   );
 };

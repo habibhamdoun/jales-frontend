@@ -2,7 +2,11 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { AppTabsParamList } from '@/src/navigation/AppTabs';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  AppTabsParamList,
+  ProfileStackParamList,
+} from '@/src/navigation/AppTabs';
 import { Screen } from '@/src/components/themed/Screen';
 import { ThemedText } from '@/src/components/themed/ThemedText';
 import { ThemedCard } from '@/src/components/themed/ThemedCard';
@@ -17,6 +21,7 @@ import {
   Minus,
   Bluetooth,
   AlertCircle,
+  Zap,
 } from 'lucide-react-native';
 import { useBle } from '@/src/hooks/useBle';
 
@@ -25,18 +30,41 @@ const HomeScreen: React.FC = () => {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabsParamList>>();
 
   // Get BLE device and data from context
-  const { device, bno, mpu1, isConnected } = useBle();
+  const { device, bno, mpu1, isConnected, postureAnalysis } = useBle();
 
-  const {
-    currentScore,
-    status,
-    angles,
-    vibrationCount,
-    lastCorrectionMinutesAgo,
-  } = mockPostureData;
+  const mockData = mockPostureData;
+  const { vibrationCount, lastCorrectionMinutesAgo } = mockData;
+
+  // Calculate dynamic posture score from REBA data
+  const calculatePostureScore = (): { score: number; status: string } => {
+    if (!postureAnalysis) {
+      return { score: mockData.currentScore, status: mockData.status };
+    }
+
+    // Combined score: lower REBA is better (1-4 range typically)
+    // Convert REBA to a 0-100 scale where 60+ is good
+    const combinedRebaScore =
+      postureAnalysis.neck.totalScore + postureAnalysis.trunk.totalScore;
+    const maxReba = 8; // Max of 4+4
+    const scorePercent = 100 - (combinedRebaScore / maxReba) * 100;
+
+    let status = 'GOOD';
+    if (scorePercent < 25) status = 'BAD';
+    else if (scorePercent < 50) status = 'WARNING';
+
+    return { score: Math.round(scorePercent), status };
+  };
+
+  const { score: currentScore, status } = calculatePostureScore();
 
   const handleConnect = () => {
+    //@ts-ignore
     navigation.navigate('Profile', { screen: 'Connect' });
+  };
+
+  const handleOpenCalibration = () => {
+    //@ts-ignore
+    navigation.navigate('Profile', { screen: 'Calibration' });
   };
 
   const getTimeAgo = (timestamp: string) => {
@@ -75,30 +103,67 @@ const HomeScreen: React.FC = () => {
           percentage={currentScore}
           size={160}
           strokeWidth={12}
-          label='POSTURE'
+          label='LIVE POSTURE'
           status={status}
         />
       </View>
 
       <View style={styles.metricsRow}>
-        <MetricCard
-          icon={<Activity color={theme.primary} size={24} />}
-          label='Neck Aligned'
-          value={bno ? `${bno.heading.toFixed(1)}°` : `${angles.neck}°`}
-          status='good'
-        />
-        <MetricCard
-          icon={<ArrowUp color={theme.primary} size={24} />}
-          label='Upper Back Aligned'
-          value={bno ? `${bno.roll.toFixed(1)}°` : `${angles.upperBack}°`}
-          status='good'
-        />
-        <MetricCard
-          icon={<Minus color={theme.primary} size={24} />}
-          label='Shoulders Aligned'
-          value={bno ? `${bno.pitch.toFixed(1)}°` : `${angles.shoulders}°`}
-          status='good'
-        />
+        {postureAnalysis ? (
+          <>
+            <MetricCard
+              icon={<Activity color={theme.primary} size={24} />}
+              label='Neck Score'
+              value={`${postureAnalysis.neck.totalScore}/4`}
+              status={postureAnalysis.neck.totalScore <= 3 ? 'good' : 'warning'}
+            />
+            <MetricCard
+              icon={<ArrowUp color={theme.primary} size={24} />}
+              label='Trunk Score'
+              value={`${postureAnalysis.trunk.totalScore}/5`}
+              status={
+                postureAnalysis.trunk.totalScore <= 2
+                  ? 'good'
+                  : postureAnalysis.trunk.totalScore <= 4
+                    ? 'warning'
+                    : 'danger'
+              }
+            />
+            <MetricCard
+              icon={<Minus color={theme.primary} size={24} />}
+              label='Overall'
+              value={`${currentScore}%`}
+              status={
+                status === 'GOOD'
+                  ? 'good'
+                  : status === 'WARNING'
+                    ? 'warning'
+                    : 'danger'
+              }
+            />
+          </>
+        ) : (
+          <>
+            <MetricCard
+              icon={<Activity color={theme.primary} size={24} />}
+              label='Neck Aligned'
+              value={bno ? `${bno.heading.toFixed(1)}°` : 'N/A'}
+              status='good'
+            />
+            <MetricCard
+              icon={<ArrowUp color={theme.primary} size={24} />}
+              label='Upper Back Aligned'
+              value={bno ? `${bno.roll.toFixed(1)}°` : 'N/A'}
+              status='good'
+            />
+            <MetricCard
+              icon={<Minus color={theme.primary} size={24} />}
+              label='Shoulders Aligned'
+              value={bno ? `${bno.pitch.toFixed(1)}°` : 'N/A'}
+              status='good'
+            />
+          </>
+        )}
       </View>
 
       <ThemedCard style={styles.vibrationCard}>
@@ -133,6 +198,32 @@ const HomeScreen: React.FC = () => {
           {lastCorrectionMinutesAgo}m ago
         </ThemedText>
       </ThemedCard>
+
+      {/* Angle Debug Info */}
+      {postureAnalysis && (
+        <ThemedCard style={styles.statusCard}>
+          <ThemedText variant='label' style={styles.statusLabel}>
+            Angle Data (Debug)
+          </ThemedText>
+          <ThemedText variant='caption' color={theme.mutedText}>
+            Neck Pitch: {postureAnalysis.neck.angles.pitch.toFixed(1)}° (Score:{' '}
+            {postureAnalysis.neck.totalScore})
+          </ThemedText>
+          <ThemedText variant='caption' color={theme.mutedText}>
+            Neck Roll: {postureAnalysis.neck.angles.roll.toFixed(1)}°
+          </ThemedText>
+          <ThemedText variant='caption' color={theme.mutedText}>
+            Trunk Pitch: {postureAnalysis.trunk.angles.pitch.toFixed(1)}°
+            (Score: {postureAnalysis.trunk.totalScore})
+          </ThemedText>
+          <ThemedText variant='caption' color={theme.mutedText}>
+            Trunk Roll: {postureAnalysis.trunk.angles.roll.toFixed(1)}°
+          </ThemedText>
+          <ThemedText variant='caption' color={theme.mutedText}>
+            {postureAnalysis.neck.label} | {postureAnalysis.trunk.label}
+          </ThemedText>
+        </ThemedCard>
+      )}
 
       {/* Connection Status Debug */}
       <ThemedCard style={styles.statusCard}>
@@ -200,6 +291,126 @@ const HomeScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </ThemedCard>
+
+          {/* Calibration Quick Access Card */}
+          <ThemedCard style={styles.calibrationCard}>
+            <View style={styles.calibrationCardContent}>
+              <View
+                style={[
+                  styles.calibrationCardIcon,
+                  { backgroundColor: theme.primarySoft },
+                ]}
+              >
+                <Zap color={theme.primary} size={24} />
+              </View>
+              <View style={styles.calibrationCardInfo}>
+                <ThemedText variant='label'>Sensor Calibration</ThemedText>
+                <ThemedText variant='caption' color={theme.mutedText}>
+                  Calibrate individual sensors
+                </ThemedText>
+              </View>
+              <TouchableOpacity onPress={handleOpenCalibration}>
+                <ThemedText variant='label' color={theme.primary}>
+                  Open
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </ThemedCard>
+
+          {/* Posture Angles & REBA Section */}
+          {postureAnalysis ? (
+            <ThemedCard style={styles.postureCard}>
+              <ThemedText variant='label' style={styles.postureTitle}>
+                Posture Angles
+              </ThemedText>
+
+              {/* Neck Posture */}
+              <View style={styles.postureSection}>
+                <ThemedText variant='body' style={styles.postureSectionTitle}>
+                  Neck
+                </ThemedText>
+                <View style={styles.postureRow}>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Pitch
+                    </ThemedText>
+                    <ThemedText variant='body'>
+                      {postureAnalysis.neck.angles.pitch.toFixed(1)}°
+                    </ThemedText>
+                  </View>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Roll
+                    </ThemedText>
+                    <ThemedText variant='body'>
+                      {postureAnalysis.neck.angles.roll.toFixed(1)}°
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={styles.postureRow}>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      REBA
+                    </ThemedText>
+                    <ThemedText variant='caption' style={styles.postureLabel}>
+                      {postureAnalysis.neck.label}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Score
+                    </ThemedText>
+                    <ThemedText variant='body' style={styles.postureScore}>
+                      {postureAnalysis.neck.totalScore}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              {/* Trunk Posture */}
+              <View style={styles.postureSection}>
+                <ThemedText variant='body' style={styles.postureSectionTitle}>
+                  Trunk
+                </ThemedText>
+                <View style={styles.postureRow}>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Pitch
+                    </ThemedText>
+                    <ThemedText variant='body'>
+                      {postureAnalysis.trunk.angles.pitch.toFixed(1)}°
+                    </ThemedText>
+                  </View>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Roll
+                    </ThemedText>
+                    <ThemedText variant='body'>
+                      {postureAnalysis.trunk.angles.roll.toFixed(1)}°
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={styles.postureRow}>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      REBA
+                    </ThemedText>
+                    <ThemedText variant='caption' style={styles.postureLabel}>
+                      {postureAnalysis.trunk.label}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Score
+                    </ThemedText>
+                    <ThemedText variant='body' style={styles.postureScore}>
+                      {postureAnalysis.trunk.totalScore}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+            </ThemedCard>
+          ) : null}
 
           {/* Live Sensor Data Display */}
           <ThemedCard style={styles.sensorCard}>
@@ -441,6 +652,42 @@ const styles = StyleSheet.create({
   deviceCardInfo: {
     flex: 1,
   },
+  calibrationCard: {
+    marginBottom: 16,
+  },
+  calibrationCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  calibrationCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  calibrationCardInfo: {
+    flex: 1,
+  },
+  calibrationTitle: {
+    marginBottom: 8,
+  },
+  calibrationDescription: {
+    marginBottom: 16,
+    lineHeight: 16,
+  },
+  calibrateButton: {
+    marginBottom: 12,
+  },
+  calibrationMessageCard: {
+    borderLeftWidth: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  calibrationMessageText: {
+    fontWeight: '600',
+  },
   sensorCard: {
     marginBottom: 16,
   },
@@ -514,6 +761,42 @@ const styles = StyleSheet.create({
   statusLabel: {
     marginBottom: 8,
     color: '#FF9800',
+  },
+  postureCard: {
+    marginBottom: 16,
+  },
+  postureTitle: {
+    marginBottom: 16,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  postureSection: {
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  postureSectionTitle: {
+    marginBottom: 12,
+    fontWeight: '600',
+  },
+  postureRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  postureMetric: {
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  postureLabel: {
+    marginTop: 4,
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  postureScore: {
+    marginTop: 4,
+    fontWeight: '600',
   },
   spacer: {
     height: 32,
