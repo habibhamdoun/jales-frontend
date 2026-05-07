@@ -18,6 +18,8 @@ import { ThemedCard } from '@/src/components/themed/ThemedCard';
 import { useTheme } from '@/src/theme/useTheme';
 import { ChevronDown, Check } from 'lucide-react-native';
 import { registerUser } from '@/src/services/auth';
+import { ApiError } from '@/src/services/api';
+import { Alert } from 'react-native';
 
 type RegisterScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
@@ -344,67 +346,48 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   }, [heightCm, weightKg]);
 
   const handleRegister = async () => {
+    const trimmedEmail = email.trim();
+    const trimmedName = fullName.trim();
+    const emailOk = /\S+@\S+\.\S+/.test(trimmedEmail);
+
+    if (!trimmedName || !trimmedEmail || !password) {
+      Alert.alert('Missing required fields', 'Please fill name, email, and password.');
+      return;
+    }
+    if (!emailOk) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert('Weak password', 'Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Passwords do not match', 'Please re-enter your password.');
+      return;
+    }
+
     setLoading(true);
 
-    const payload = {
-      account: {
-        email,
-        password,
-      },
-      profile: {
-        fullName,
-        nickname: nickname || null,
-        age: toNumberOrNull(age),
-        gender,
-        heightCm: toNumberOrNull(heightCm),
-        weightKg: toNumberOrNull(weightKg),
-        bmi: bmi ? Number(bmi.toFixed(1)) : null,
-      },
-      body: {
-        shoulderWidthCm: toNumberOrNull(shoulderWidthCm),
-        neckLengthCm: toNumberOrNull(neckLengthCm),
-        torsoLengthCm: toNumberOrNull(torsoLengthCm),
-        armLengthCm: toNumberOrNull(armLengthCm),
-        bodyType,
-      },
-      health: {
-        existingPostureProblems: healthProblems,
-      },
-      lifestyle: {
-        dailySittingHours: toNumberOrNull(dailySittingHours),
-        dailyStandingHours: toNumberOrNull(dailyStandingHours),
-        gamingDurationHours: toNumberOrNull(gamingDurationHours),
-        studyDurationHours: toNumberOrNull(studyDurationHours),
-        workDurationHours: toNumberOrNull(workDurationHours),
-        exerciseFrequency,
-        workType,
-        sleepDurationHours: toNumberOrNull(sleepDurationHours),
-        mattressType: mattressType || null,
-        phoneUsageHours: toNumberOrNull(phoneUsageHours),
-        tabletLaptopUsageHours: toNumberOrNull(tabletLaptopUsageHours),
-      },
-      calibration: {
-        neutralPostureCalibration: neutralPostureCalibration || null,
-        maximumNeckFlexion: toNumberOrNull(maximumNeckFlexion),
-        comfortableSittingAngle: toNumberOrNull(comfortableSittingAngle),
-        comfortableStandingAngle: toNumberOrNull(comfortableStandingAngle),
-        personalizedSafeThresholds: personalizedSafeThresholds || null,
-        walkingPostureBaseline: walkingPostureBaseline || null,
-        shoulderAlignmentBaseline: shoulderAlignmentBaseline || null,
-      },
-      personalization: {
-        notificationSensitivity,
-        vibrationIntensityPreference,
-        reminderFrequency,
-        themeMode,
-        preferredLanguage,
-        goalType,
-      },
-    };
-
     try {
-      await registerUser(payload);
+      await registerUser({ name: trimmedName, email: trimmedEmail, password });
+      Alert.alert('Success', 'User registered successfully.');
       navigation.navigate('Login');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 400 && err.message.toLowerCase().includes('email')) {
+          Alert.alert(
+            'Email already in use',
+            'An account with this email already exists. Please log in.',
+          );
+          return;
+        }
+        if (err.status === 400) {
+          Alert.alert('Invalid details', err.message || 'Please check your inputs.');
+          return;
+        }
+      }
+      Alert.alert('Registration failed', err instanceof Error ? err.message : 'Please try again.');
     } finally {
       setLoading(false);
     }
@@ -756,7 +739,13 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
             size='lg'
             onPress={handleRegister}
             loading={loading}
-            disabled={password.length > 0 && password !== confirmPassword}
+            disabled={
+              loading ||
+              !fullName.trim() ||
+              !email.trim() ||
+              password.length < 8 ||
+              (password.length > 0 && password !== confirmPassword)
+            }
             style={styles.button}
           />
 
