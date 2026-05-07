@@ -27,6 +27,7 @@ import {
   PostureAnalysis,
 } from '@/src/utils/reba';
 import { getTrunkAngles } from '@/src/utils/posture';
+import { sendPostureMisalignmentAlert } from '@/src/services/notifications';
 
 global.Buffer = global.Buffer || Buffer;
 
@@ -42,6 +43,7 @@ const SCAN_SECONDS = 6;
 const DEVICE_NAME = 'PostureMonitor';
 const isExpoGo =
   Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+const POSTURE_ALERT_COOLDOWN_MS = 5 * 60 * 1000;
 
 export const BleContext = createContext<BLEContextType | undefined>(undefined);
 
@@ -54,6 +56,7 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
   const stateListenerRef = useRef<Subscription | null>(null);
   const appStateRef = useRef<AppStateStatus>('active');
   const isMountedRef = useRef(true);
+  const lastPostureAlertAtRef = useRef(0);
 
   const [device, setDevice] = useState<Device | null>(null);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -515,37 +518,52 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
   const updatePostureAnalysis = useCallback(() => {
     if (!isMountedRef.current) return;
 
-    // Need both BNO and MPU1 for complete analysis
+    // Need neck (BNO) and upper back (MPU1) for core analysis.
     if (!bno || !mpu1) {
       setPostureAnalysis(null);
       return;
     }
 
     try {
-      // Get trunk angles from MPU1
-      const { relative: trunkAngles } = getTrunkAngles(mpu1, trunkNeutralReference || undefined);
+      const { relative: upperBackAngles, absolute: upperBackAbsolute } =
+        getTrunkAngles(mpu1, trunkNeutralReference || undefined);
 
-      let effectiveTrunkPitch = trunkAngles?.pitch ?? 0;
-      let effectiveTrunkRoll = trunkAngles?.roll ?? 0;
+      let effectiveUpperBackPitch =
+        upperBackAngles?.pitch ?? upperBackAbsolute?.pitch ?? 0;
+      let effectiveUpperBackRoll =
+        upperBackAngles?.roll ?? upperBackAbsolute?.roll ?? 0;
 
       // Apply exponential moving average smoothing to reduce noise
       smoothedAnglesRef.current.pitch = 
-        SMOOTHING_FACTOR * effectiveTrunkPitch + 
+        SMOOTHING_FACTOR * effectiveUpperBackPitch + 
         (1 - SMOOTHING_FACTOR) * smoothedAnglesRef.current.pitch;
       
       smoothedAnglesRef.current.roll = 
-        SMOOTHING_FACTOR * effectiveTrunkRoll + 
+        SMOOTHING_FACTOR * effectiveUpperBackRoll + 
         (1 - SMOOTHING_FACTOR) * smoothedAnglesRef.current.roll;
 
-      effectiveTrunkPitch = smoothedAnglesRef.current.pitch;
-      effectiveTrunkRoll = smoothedAnglesRef.current.roll;
+      effectiveUpperBackPitch = smoothedAnglesRef.current.pitch;
+      effectiveUpperBackRoll = smoothedAnglesRef.current.roll;
+
+      const shoulder2 = getTrunkAngles(mpu2).absolute;
+      const shoulder3 = getTrunkAngles(mpu3).absolute;
+      const shoulderPitch =
+        shoulder2 && shoulder3
+          ? (shoulder2.pitch + shoulder3.pitch) / 2
+          : (shoulder2?.pitch ?? shoulder3?.pitch ?? 0);
+      const shoulderRoll =
+        shoulder2 && shoulder3
+          ? shoulder2.roll - shoulder3.roll
+          : (shoulder2?.roll ?? shoulder3?.roll ?? 0);
 
       // Calculate posture analysis
       const analysis = calculatePostureAnalysis(
         bno.pitch,
         bno.roll,
-        effectiveTrunkPitch,
-        effectiveTrunkRoll,
+        effectiveUpperBackPitch,
+        effectiveUpperBackRoll,
+        shoulderPitch,
+        shoulderRoll,
       );
 
       if (isMountedRef.current) {
@@ -554,7 +572,7 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (error) {
       console.error('[BLE] Error calculating posture analysis:', error);
     }
-  }, [bno, mpu1, trunkNeutralReference]);
+  }, [bno, mpu1, mpu2, mpu3, trunkNeutralReference]);
 
   // Set trunk neutral reference for relative posture calculation
   const handleSetTrunkNeutralReference = useCallback(
@@ -612,6 +630,36 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     updatePostureAnalysis();
   }, [updatePostureAnalysis]);
+
+  useEffect(() => {
+    if (!isConnected || !postureAnalysis) return;
+
+    const neckMisaligned = postureAnalysis.neck.totalScore >= 3;
+    const upperBackMisaligned = postureAnalysis.upperBack.totalScore >= 3;
+    const shouldersMisaligned = postureAnalysis.shoulders.totalScore >= 3;
+    if (!neckMisaligned && !upperBackMisaligned && !shouldersMisaligned) return;
+
+    const now = Date.now();
+    if (now - lastPostureAlertAtRef.current < POSTURE_ALERT_COOLDOWN_MS) {
+      return;
+    }
+
+    lastPostureAlertAtRef.current = now;
+
+    const issues = [
+      neckMisaligned ? `neck: ${postureAnalysis.neck.label}` : null,
+      upperBackMisaligned
+        ? `upper back: ${postureAnalysis.upperBack.label}`
+        : null,
+      shouldersMisaligned
+        ? `shoulders: ${postureAnalysis.shoulders.label}`
+        : null,
+    ].filter(Boolean);
+
+    sendPostureMisalignmentAlert(
+      `Misalignment detected (${issues.join('; ')}). Adjust your posture when safe.`,
+    );
+  }, [isConnected, postureAnalysis]);
 
   const value: BLEContextType = {
     device,

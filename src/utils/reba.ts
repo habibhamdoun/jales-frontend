@@ -1,18 +1,21 @@
 /**
- * Posture analysis types for REBA-style classification
+ * Posture analysis utilities for the JALES sensor layout:
+ * - BNO: neck orientation
+ * - MPU1: upper back alignment
+ * - MPU2 + MPU3: shoulder alignment
  */
 
 export enum RebaCategory {
   EXTENSION = 'extension',
-  FLEXION_0_20 = '0–20° flexion',
-  FLEXION_20_PLUS = '>20° flexion',
-  FLEXION_20_60 = '20–60° flexion',
-  FLEXION_60_PLUS = '>60° flexion',
+  ALIGNED = 'aligned',
+  MODERATE = 'moderate',
+  SEVERE = 'severe',
 }
 
 export interface RebaScore {
   baseScore: number;
   sideBendPenalty: number;
+  inversionPenalty: number;
   totalScore: number;
   category: RebaCategory;
   label: string;
@@ -25,148 +28,246 @@ export interface PostureAngles {
 
 export interface PostureAnalysis {
   neck: RebaScore & { angles: PostureAngles };
+  upperBack: RebaScore & { angles: PostureAngles };
+  shoulders: RebaScore & { angles: PostureAngles };
   trunk: RebaScore & { angles: PostureAngles };
 }
 
-/**
- * REBA threshold configuration
- * Can be easily replaced with backend config later
- */
-export const REBA_THRESHOLDS = {
+export const POSTURE_THRESHOLDS = {
   neck: {
-    sideBendThreshold: 15, // degrees - more forgiving
-    flexionBoundary1: 25, // degrees - more forgiving
+    alignedPitch: 20,
+    alignedRoll: 12,
+    moderatePitch: 45,
+    moderateRoll: 25,
+    extremeAngle: 65,
   },
-  trunk: {
-    sideBendThreshold: 15, // degrees - more forgiving
-    flexionBoundary1: 40, // degrees - more forgiving for sitting
-    flexionBoundary2: 70, // degrees - more forgiving
+  upperBack: {
+    alignedPitch: 20,
+    alignedRoll: 12,
+    moderatePitch: 45,
+    moderateRoll: 25,
+    extremeAngle: 70,
+  },
+  shoulders: {
+    alignedTilt: 8,
+    moderateTilt: 18,
+    alignedPitch: 25,
+    moderatePitch: 45,
+    extremeAngle: 70,
   },
 };
 
-/**
- * Calculate REBA-style neck score based on pitch and roll angles
- * @param pitch - Neck pitch angle in degrees (positive = flexion, negative = extension)
- * @param roll - Neck roll angle in degrees (positive/negative = side bend)
- * @returns RebaScore with breakdown
- */
-export const calculateNeckReba = (pitch: number, roll: number): RebaScore => {
-  let baseScore = 0;
-  let category: RebaCategory;
-  let label = '';
+const hasExtremeTilt = (
+  pitch: number,
+  roll: number,
+  extremeAngle: number,
+): boolean => {
+  return Math.abs(pitch) > extremeAngle || Math.abs(roll) > extremeAngle;
+};
 
-  // Determine base score based on pitch angle
-  if (pitch < 0) {
-    // Extension
-    baseScore = 2;
-    category = RebaCategory.EXTENSION;
-    label = 'Extension';
-  } else if (pitch >= 0 && pitch <= REBA_THRESHOLDS.neck.flexionBoundary1) {
-    // 0–20° flexion
-    baseScore = 1;
-    category = RebaCategory.FLEXION_0_20;
-    label = '0–20° flexion';
-  } else {
-    // >20° flexion
-    baseScore = 2;
-    category = RebaCategory.FLEXION_20_PLUS;
-    label = '>20° flexion';
-  }
-
-  // Add penalty for side bend
-  const sideBendPenalty =
-    Math.abs(roll) > REBA_THRESHOLDS.neck.sideBendThreshold ? 1 : 0;
-  if (sideBendPenalty > 0) {
-    label += ' + side bend';
-  }
-
+const createScore = (
+  baseScore: number,
+  sideBendPenalty: number,
+  inversionPenalty: number,
+  category: RebaCategory,
+  label: string,
+): RebaScore => {
   return {
     baseScore,
     sideBendPenalty,
-    totalScore: baseScore + sideBendPenalty,
+    inversionPenalty,
+    totalScore: baseScore + sideBendPenalty + inversionPenalty,
     category,
     label,
   };
 };
 
-/**
- * Calculate REBA-style trunk score based on pitch and roll angles
- * @param pitch - Trunk pitch angle in degrees (positive = flexion, negative = extension)
- * @param roll - Trunk roll angle in degrees (positive/negative = side bend)
- * @returns RebaScore with breakdown
- */
-export const calculateTrunkReba = (pitch: number, roll: number): RebaScore => {
-  let baseScore = 0;
-  let category: RebaCategory;
-  let label = '';
+const calculateSegmentScore = (
+  pitch: number,
+  roll: number,
+  thresholds: {
+    alignedPitch: number;
+    alignedRoll: number;
+    moderatePitch: number;
+    moderateRoll: number;
+    extremeAngle: number;
+  },
+  labels: {
+    aligned: string;
+    moderatePitch: string;
+    severePitch: string;
+    moderateRoll: string;
+    severeRoll: string;
+    extension: string;
+  },
+): RebaScore => {
+  const absPitch = Math.abs(pitch);
+  const absRoll = Math.abs(roll);
+  const inversionPenalty = hasExtremeTilt(
+    pitch,
+    roll,
+    thresholds.extremeAngle,
+  )
+    ? 2
+    : 0;
 
-  // Determine base score based on pitch angle
-  if (pitch < 0) {
-    // Extension
-    baseScore = 2;
-    category = RebaCategory.EXTENSION;
-    label = 'Extension';
-  } else if (pitch >= 0 && pitch <= REBA_THRESHOLDS.trunk.flexionBoundary1) {
-    // 0–40° flexion (relaxed for normal sitting posture)
-    baseScore = 1;
-    category = RebaCategory.FLEXION_0_20;
-    label = '0–40° flexion';
-  } else if (
-    pitch > REBA_THRESHOLDS.trunk.flexionBoundary1 &&
-    pitch <= REBA_THRESHOLDS.trunk.flexionBoundary2
-  ) {
-    // 40–70° flexion
-    baseScore = 2;
-    category = RebaCategory.FLEXION_20_60;
-    label = '40–70° flexion';
-  } else {
-    // >70° flexion
+  let baseScore = 1;
+  let category = RebaCategory.ALIGNED;
+  let label = labels.aligned;
+
+  if (pitch < -thresholds.alignedPitch) {
+    baseScore = absPitch > thresholds.moderatePitch ? 3 : 2;
+    category =
+      absPitch > thresholds.moderatePitch
+        ? RebaCategory.SEVERE
+        : RebaCategory.EXTENSION;
+    label = labels.extension;
+  } else if (absPitch > thresholds.moderatePitch) {
     baseScore = 3;
-    category = RebaCategory.FLEXION_60_PLUS;
-    label = '>70° flexion';
+    category = RebaCategory.SEVERE;
+    label = labels.severePitch;
+  } else if (absPitch > thresholds.alignedPitch) {
+    baseScore = 2;
+    category = RebaCategory.MODERATE;
+    label = labels.moderatePitch;
   }
 
-  // Add penalty for side bend
-  const sideBendPenalty =
-    Math.abs(roll) > REBA_THRESHOLDS.trunk.sideBendThreshold ? 1 : 0;
-  if (sideBendPenalty > 0) {
-    label += ' + side bend';
+  const sideBendPenalty = absRoll > thresholds.alignedRoll ? 1 : 0;
+  if (absRoll > thresholds.moderateRoll) {
+    label =
+      label === labels.aligned
+        ? labels.severeRoll
+        : `${label} + ${labels.severeRoll}`;
+  } else if (sideBendPenalty > 0) {
+    label =
+      label === labels.aligned
+        ? labels.moderateRoll
+        : `${label} + ${labels.moderateRoll}`;
   }
 
-  return {
+  if (inversionPenalty > 0) {
+    label += ' + extreme tilt';
+  }
+
+  return createScore(
     baseScore,
     sideBendPenalty,
-    totalScore: baseScore + sideBendPenalty,
+    inversionPenalty,
     category,
     label,
-  };
+  );
 };
 
-/**
- * Calculate full posture analysis for neck and trunk
- * @param neckPitch - Neck pitch angle
- * @param neckRoll - Neck roll angle
- * @param trunkPitch - Trunk pitch angle
- * @param trunkRoll - Trunk roll angle
- * @returns Complete posture analysis with REBA scores
- */
+export const calculateNeckReba = (
+  pitch: number,
+  roll: number,
+): RebaScore => {
+  return calculateSegmentScore(pitch, roll, POSTURE_THRESHOLDS.neck, {
+    aligned: 'Neck aligned',
+    moderatePitch: 'Neck flexion',
+    severePitch: 'Severe neck flexion',
+    moderateRoll: 'Neck side tilt',
+    severeRoll: 'Severe neck side tilt',
+    extension: 'Neck extension',
+  });
+};
+
+export const calculateUpperBackReba = (
+  pitch: number,
+  roll: number,
+): RebaScore => {
+  return calculateSegmentScore(pitch, roll, POSTURE_THRESHOLDS.upperBack, {
+    aligned: 'Upper back aligned',
+    moderatePitch: 'Upper back forward lean',
+    severePitch: 'Severe upper back lean',
+    moderateRoll: 'Upper back side bend',
+    severeRoll: 'Severe upper back side bend',
+    extension: 'Upper back extension',
+  });
+};
+
+export const calculateTrunkReba = calculateUpperBackReba;
+
+export const calculateShoulderReba = (
+  pitch: number,
+  roll: number,
+): RebaScore => {
+  const thresholds = POSTURE_THRESHOLDS.shoulders;
+  const absPitch = Math.abs(pitch);
+  const absRoll = Math.abs(roll);
+  const inversionPenalty = hasExtremeTilt(
+    pitch,
+    roll,
+    thresholds.extremeAngle,
+  )
+    ? 2
+    : 0;
+
+  let baseScore = 1;
+  let category = RebaCategory.ALIGNED;
+  let label = 'Shoulders aligned';
+
+  if (absRoll > thresholds.moderateTilt) {
+    baseScore = 3;
+    category = RebaCategory.SEVERE;
+    label = 'Severe shoulder tilt';
+  } else if (absRoll > thresholds.alignedTilt) {
+    baseScore = 2;
+    category = RebaCategory.MODERATE;
+    label = 'Shoulder tilt';
+  }
+
+  const sideBendPenalty = absPitch > thresholds.alignedPitch ? 1 : 0;
+  if (absPitch > thresholds.moderatePitch) {
+    label += ' + severe forward/back tilt';
+  } else if (sideBendPenalty > 0) {
+    label += ' + forward/back tilt';
+  }
+
+  if (inversionPenalty > 0) {
+    label += ' + extreme tilt';
+  }
+
+  return createScore(
+    baseScore,
+    sideBendPenalty,
+    inversionPenalty,
+    category,
+    label,
+  );
+};
+
 export const calculatePostureAnalysis = (
   neckPitch: number,
   neckRoll: number,
-  trunkPitch: number,
-  trunkRoll: number,
+  upperBackPitch: number,
+  upperBackRoll: number,
+  shoulderPitch = 0,
+  shoulderRoll = 0,
 ): PostureAnalysis => {
   const neckScore = calculateNeckReba(neckPitch, neckRoll);
-  const trunkScore = calculateTrunkReba(trunkPitch, trunkRoll);
+  const upperBackScore = calculateUpperBackReba(
+    upperBackPitch,
+    upperBackRoll,
+  );
+  const shoulderScore = calculateShoulderReba(shoulderPitch, shoulderRoll);
 
   return {
     neck: {
       ...neckScore,
       angles: { pitch: neckPitch, roll: neckRoll },
     },
+    upperBack: {
+      ...upperBackScore,
+      angles: { pitch: upperBackPitch, roll: upperBackRoll },
+    },
+    shoulders: {
+      ...shoulderScore,
+      angles: { pitch: shoulderPitch, roll: shoulderRoll },
+    },
     trunk: {
-      ...trunkScore,
-      angles: { pitch: trunkPitch, roll: trunkRoll },
+      ...upperBackScore,
+      angles: { pitch: upperBackPitch, roll: upperBackRoll },
     },
   };
 };

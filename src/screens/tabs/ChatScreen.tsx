@@ -99,7 +99,7 @@ const ChatScreen: React.FC = () => {
       return;
     }
 
-    const trunkAngles = getTrunkAngles(
+    const upperBackAngles = getTrunkAngles(
       mpu1,
       trunkNeutralReference || undefined,
     );
@@ -109,14 +109,14 @@ const ChatScreen: React.FC = () => {
       bno
         ? `Neck/BNO orientation: heading ${bno.heading.toFixed(1)} degrees, roll ${bno.roll.toFixed(1)} degrees, pitch ${bno.pitch.toFixed(1)} degrees.`
         : 'Neck/BNO orientation: unavailable.',
-      trunkAngles.absolute
-        ? `Trunk absolute angles: pitch ${trunkAngles.absolute.pitch.toFixed(1)} degrees, roll ${trunkAngles.absolute.roll.toFixed(1)} degrees.`
-        : 'Trunk absolute angles: unavailable.',
-      trunkAngles.relative
-        ? `Trunk relative-to-neutral angles: pitch ${trunkAngles.relative.pitch.toFixed(1)} degrees, roll ${trunkAngles.relative.roll.toFixed(1)} degrees.`
-        : 'Trunk relative-to-neutral angles: unavailable.',
+      upperBackAngles.absolute
+        ? `Upper back/MPU1 absolute angles: pitch ${upperBackAngles.absolute.pitch.toFixed(1)} degrees, roll ${upperBackAngles.absolute.roll.toFixed(1)} degrees.`
+        : 'Upper back/MPU1 absolute angles: unavailable.',
+      upperBackAngles.relative
+        ? `Upper back/MPU1 relative-to-neutral angles: pitch ${upperBackAngles.relative.pitch.toFixed(1)} degrees, roll ${upperBackAngles.relative.roll.toFixed(1)} degrees.`
+        : 'Upper back/MPU1 relative-to-neutral angles: unavailable.',
       postureAnalysis
-        ? `REBA-style scores: neck ${postureAnalysis.neck.totalScore} (${postureAnalysis.neck.label}), trunk ${postureAnalysis.trunk.totalScore} (${postureAnalysis.trunk.label}).`
+        ? `Posture scores: neck ${postureAnalysis.neck.totalScore} (${postureAnalysis.neck.label}), upper back ${postureAnalysis.upperBack.totalScore} (${postureAnalysis.upperBack.label}), shoulders ${postureAnalysis.shoulders.totalScore} (${postureAnalysis.shoulders.label}).`
         : 'REBA-style scores: unavailable.',
       'Tell me what looks good, what needs correction, and one action I should take now.',
     ].join('\n');

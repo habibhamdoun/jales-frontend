@@ -34,7 +34,8 @@ const HomeScreen: React.FC = () => {
   const navigation = useNavigation<BottomTabNavigationProp<AppTabsParamList>>();
 
   // Get BLE device and data from context
-  const { device, bno, mpu1, isConnected, postureAnalysis } = useBle();
+  const { device, bno, mpu1, mpu2, mpu3, isConnected, postureAnalysis } =
+    useBle();
 
   const mockData = mockPostureData;
   const { vibrationCount, lastCorrectionMinutesAgo } = mockData;
@@ -48,8 +49,10 @@ const HomeScreen: React.FC = () => {
     // Combined score: lower REBA is better (1-4 range typically)
     // Convert REBA to a 0-100 scale where 60+ is good
     const combinedRebaScore =
-      postureAnalysis.neck.totalScore + postureAnalysis.trunk.totalScore;
-    const maxReba = 8; // Max of 4+4
+      postureAnalysis.neck.totalScore +
+      postureAnalysis.upperBack.totalScore +
+      postureAnalysis.shoulders.totalScore;
+    const maxReba = 15;
     const scorePercent = 100 - (combinedRebaScore / maxReba) * 100;
 
     let status = 'GOOD';
@@ -143,18 +146,23 @@ const HomeScreen: React.FC = () => {
             icon: <ArrowUp color={theme.primary} size={22} />,
             label: 'Upper Back',
             value:
-              postureAnalysis.trunk.totalScore <= 3 ? 'Aligned' : 'Misaligned',
+              postureAnalysis.upperBack.totalScore <= 2 ? 'Aligned' : 'Misaligned',
             statusColor:
-              postureAnalysis.trunk.totalScore <= 3
+              postureAnalysis.upperBack.totalScore <= 2
                 ? theme.success
                 : theme.danger,
           },
           {
             icon: <Minus color={theme.primary} size={22} />,
             label: 'Shoulders',
-            value: postureStatus === 'GOOD' ? 'Aligned' : 'Misaligned',
+            value:
+              postureAnalysis.shoulders.totalScore <= 2
+                ? 'Aligned'
+                : 'Misaligned',
             statusColor:
-              postureStatus === 'GOOD' ? theme.success : theme.danger,
+              postureAnalysis.shoulders.totalScore <= 2
+                ? theme.success
+                : theme.danger,
           },
         ]
       : [
@@ -374,14 +382,19 @@ const HomeScreen: React.FC = () => {
             Neck Roll: {postureAnalysis.neck.angles.roll.toFixed(1)}째
           </ThemedText>
           <ThemedText variant='caption' color={theme.mutedText}>
-            Trunk Pitch: {postureAnalysis.trunk.angles.pitch.toFixed(1)}째
-            (Score: {postureAnalysis.trunk.totalScore})
+            Upper Back Pitch: {postureAnalysis.upperBack.angles.pitch.toFixed(1)}째
+            (Score: {postureAnalysis.upperBack.totalScore})
           </ThemedText>
           <ThemedText variant='caption' color={theme.mutedText}>
-            Trunk Roll: {postureAnalysis.trunk.angles.roll.toFixed(1)}째
+            Upper Back Roll: {postureAnalysis.upperBack.angles.roll.toFixed(1)}째
           </ThemedText>
           <ThemedText variant='caption' color={theme.mutedText}>
-            {postureAnalysis.neck.label} | {postureAnalysis.trunk.label}
+            Shoulders Tilt: {postureAnalysis.shoulders.angles.roll.toFixed(1)}�
+            (Score: {postureAnalysis.shoulders.totalScore})
+          </ThemedText>
+          <ThemedText variant='caption' color={theme.mutedText}>
+            {postureAnalysis.neck.label} | {postureAnalysis.upperBack.label} |{' '}
+            {postureAnalysis.shoulders.label}
           </ThemedText>
         </ThemedCard>
       )}
@@ -528,10 +541,10 @@ const HomeScreen: React.FC = () => {
                 </View>
               </View>
 
-              {/* Trunk Posture */}
+              {/* Upper Back Posture */}
               <View style={styles.postureSection}>
                 <ThemedText variant='body' style={styles.postureSectionTitle}>
-                  Trunk
+                  Upper Back
                 </ThemedText>
                 <View style={styles.postureRow}>
                   <View style={styles.postureMetric}>
@@ -539,7 +552,7 @@ const HomeScreen: React.FC = () => {
                       Pitch
                     </ThemedText>
                     <ThemedText variant='body'>
-                      {postureAnalysis.trunk.angles.pitch.toFixed(1)}째
+                      {postureAnalysis.upperBack.angles.pitch.toFixed(1)}째
                     </ThemedText>
                   </View>
                   <View style={styles.postureMetric}>
@@ -547,7 +560,7 @@ const HomeScreen: React.FC = () => {
                       Roll
                     </ThemedText>
                     <ThemedText variant='body'>
-                      {postureAnalysis.trunk.angles.roll.toFixed(1)}째
+                      {postureAnalysis.upperBack.angles.roll.toFixed(1)}째
                     </ThemedText>
                   </View>
                 </View>
@@ -557,7 +570,7 @@ const HomeScreen: React.FC = () => {
                       REBA
                     </ThemedText>
                     <ThemedText variant='caption' style={styles.postureLabel}>
-                      {postureAnalysis.trunk.label}
+                      {postureAnalysis.upperBack.label}
                     </ThemedText>
                   </View>
                   <View style={styles.postureMetric}>
@@ -565,7 +578,49 @@ const HomeScreen: React.FC = () => {
                       Score
                     </ThemedText>
                     <ThemedText variant='body' style={styles.postureScore}>
-                      {postureAnalysis.trunk.totalScore}
+                      {postureAnalysis.upperBack.totalScore}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.postureSection}>
+                <ThemedText variant='body' style={styles.postureSectionTitle}>
+                  Shoulders
+                </ThemedText>
+                <View style={styles.postureRow}>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Avg Pitch
+                    </ThemedText>
+                    <ThemedText variant='body'>
+                      {postureAnalysis.shoulders.angles.pitch.toFixed(1)}�
+                    </ThemedText>
+                  </View>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Left/Right Tilt
+                    </ThemedText>
+                    <ThemedText variant='body'>
+                      {postureAnalysis.shoulders.angles.roll.toFixed(1)}�
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={styles.postureRow}>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Status
+                    </ThemedText>
+                    <ThemedText variant='caption' style={styles.postureLabel}>
+                      {postureAnalysis.shoulders.label}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.postureMetric}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      Score
+                    </ThemedText>
+                    <ThemedText variant='body' style={styles.postureScore}>
+                      {postureAnalysis.shoulders.totalScore}
                     </ThemedText>
                   </View>
                 </View>

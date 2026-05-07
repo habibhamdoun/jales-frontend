@@ -9,7 +9,7 @@ import { ToggleRow } from '@/src/components/ToggleRow';
 import { SliderRow } from '@/src/components/SliderRow';
 import { useTheme } from '@/src/theme/useTheme';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { scheduleLocalNotification } from '@/src/services/notifications';
+import { scheduleLocalNotification } from '../../services/notifications';
 import { triggerVibrationPattern } from '@/src/services/haptics';
 import { mockConnectedDevice } from '@/src/data/mock';
 import { APP_VERSION } from '@/src/utils/constants';
