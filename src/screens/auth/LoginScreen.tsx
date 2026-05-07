@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '@/src/navigation/AuthStack';
@@ -15,6 +16,7 @@ import { ThemedButton } from '@/src/components/themed/ThemedButton';
 import { useTheme } from '@/src/theme/useTheme';
 import { loginUser } from '@/src/services/auth';
 import { useAuth } from '@/src/auth/AuthContext';
+import { ApiError } from '@/src/services/api';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
@@ -33,14 +35,38 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const emailOk = (value: string) => /\S+@\S+\.\S+/.test(value.trim());
+
   const handleLogin = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      Alert.alert('Missing details', 'Please enter your email and password.');
+      return;
+    }
+    if (!emailOk(trimmedEmail)) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
+
     setLoading(true);
     try {
-      await loginUser({
-        email,
+      const data = await loginUser({
+        email: trimmedEmail,
         password,
       });
-      signIn();
+      signIn(data.token, data.user);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          Alert.alert('Incorrect email or password.', 'Please try again.');
+          return;
+        }
+        if (err.status === 404) {
+          Alert.alert('No account found with this email.', 'Please sign up first.');
+          return;
+        }
+      }
+      Alert.alert('Login failed', err instanceof Error ? err.message : 'Please try again.');
     } finally {
       setLoading(false);
     }

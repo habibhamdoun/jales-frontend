@@ -1,4 +1,5 @@
 import { ChatMessage } from '@/src/data/types';
+import { apiFetch, API_BASE_URL } from '@/src/services/api';
 
 declare const process: {
   env?: Record<string, string | undefined>;
@@ -20,6 +21,7 @@ type OpenAIResponse = {
   };
 };
 
+// Back-compat: old chat-specific url still works if set.
 const CHAT_API_URL = process.env?.EXPO_PUBLIC_JALES_CHAT_API_URL;
 const OPENAI_API_KEY = process.env?.EXPO_PUBLIC_OPENAI_API_KEY;
 const OPENAI_MODEL = process.env?.EXPO_PUBLIC_OPENAI_MODEL || 'gpt-4.1-mini';
@@ -63,16 +65,21 @@ export const sendChatMessage = async (
   messages: ChatMessage[],
   userText: string,
 ): Promise<string> => {
+  // Preferred: use your backend (one global base URL).
+  if (API_BASE_URL) {
+    const { data } = await apiFetch<any>('/chat', {
+      method: 'POST',
+      body: { messages, message: userText },
+    });
+    return data?.reply || data?.text || getResponseText(data);
+  }
+
+  // Back-compat: allow an explicit chat url override.
   if (CHAT_API_URL) {
     const response = await fetch(CHAT_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages,
-        message: userText,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, message: userText }),
     });
 
     const data = await response.json();
@@ -86,7 +93,7 @@ export const sendChatMessage = async (
 
   if (!OPENAI_API_KEY) {
     throw new Error(
-      'Missing chat API setup. Set EXPO_PUBLIC_JALES_CHAT_API_URL or EXPO_PUBLIC_OPENAI_API_KEY.',
+      'Missing chat API setup. Set EXPO_PUBLIC_API_BASE_URL (recommended) or EXPO_PUBLIC_JALES_CHAT_API_URL or EXPO_PUBLIC_OPENAI_API_KEY.',
     );
   }
 

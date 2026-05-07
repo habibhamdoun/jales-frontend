@@ -1,44 +1,62 @@
-declare const process: {
-  env?: Record<string, string | undefined>;
-};
+import { apiFetch } from '@/src/services/api';
 
-const AUTH_API_URL = process.env?.EXPO_PUBLIC_JALES_AUTH_API_URL;
-
-export interface LoginPayload {
+export type LoginPayload = {
   email: string;
   password: string;
-}
-
-export const loginUser = async (payload: LoginPayload): Promise<void> => {
-  if (!AUTH_API_URL) {
-    console.log('Login payload ready for backend:', payload);
-    return;
-  }
-
-  const response = await fetch(`${AUTH_API_URL}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error('Login failed');
-  }
 };
 
-export const registerUser = async (payload: unknown): Promise<void> => {
-  if (!AUTH_API_URL) {
-    console.log('Registration payload ready for backend:', payload);
-    return;
-  }
+export type LoginResponse = {
+  token: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+};
 
-  const response = await fetch(`${AUTH_API_URL}/register`, {
+export type RegisterPayload = {
+  name: string;
+  email: string;
+  password: string;
+};
+
+export type RegisterResponse = {
+  message: string;
+  user_id: string;
+};
+
+export type ValidateResponse = {
+  valid: boolean;
+  user?: {
+    userId?: string;
+    email?: string;
+  };
+};
+
+export const loginUser = async (payload: LoginPayload): Promise<LoginResponse> => {
+  const { data } = await apiFetch<LoginResponse>('/api/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: payload,
   });
+  return data;
+};
 
-  if (!response.ok) {
-    throw new Error('Registration failed');
-  }
+export const registerUser = async (
+  payload: RegisterPayload,
+): Promise<RegisterResponse> => {
+  const { data } = await apiFetch<RegisterResponse>('/api/auth/register', {
+    method: 'POST',
+    body: payload,
+  });
+  return data;
+};
+
+export const validateToken = async (token: string): Promise<ValidateResponse> => {
+  const { data } = await apiFetch<ValidateResponse>('/api/auth/validate', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return data;
 };

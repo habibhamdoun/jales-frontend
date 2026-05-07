@@ -1,5 +1,11 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '@/src/components/themed/Screen';
 import { ThemedText } from '@/src/components/themed/ThemedText';
@@ -13,10 +19,19 @@ import { scheduleLocalNotification } from '../../services/notifications';
 import { triggerVibrationPattern } from '@/src/services/haptics';
 import { mockConnectedDevice } from '@/src/data/mock';
 import { APP_VERSION } from '@/src/utils/constants';
+import { ThemedInput } from '@/src/components/themed/ThemedInput';
+import { useAuth } from '@/src/auth/AuthContext';
+import { ApiError } from '@/src/services/api';
+import {
+  getThresholds,
+  Thresholds,
+  updateThresholds,
+} from '@/src/services/thresholds';
 
 const SettingsScreen: React.FC = () => {
   const { theme } = useTheme();
   const navigation = useNavigation();
+  const { token, signOut } = useAuth();
 
   // Static settings state for testing
   const [settings, setSettings] = useState({
@@ -31,6 +46,15 @@ const SettingsScreen: React.FC = () => {
     shoulderCorrectionThreshold: '5°',
     upperBackCorrectionThreshold: '10°',
   });
+
+  const [thresholds, setThresholds] = useState<Thresholds | null>(null);
+  const [thresholdDraft, setThresholdDraft] = useState({
+    neck_threshold: '',
+    upper_back_threshold: '',
+    shoulder_threshold: '',
+  });
+  const [thresholdsLoading, setThresholdsLoading] = useState(false);
+  const [thresholdsSaving, setThresholdsSaving] = useState(false);
 
   // Static updateSettings function for testing
   const updateSettings = (updates: any) => {
@@ -54,6 +78,109 @@ const SettingsScreen: React.FC = () => {
   const handleDisconnect = () => {
     disconnectDevice();
     Alert.alert('Disconnected', 'Device has been disconnected successfully.');
+  };
+
+  useEffect(() => {
+    let alive = true;
+    const run = async () => {
+      if (!token) return;
+      setThresholdsLoading(true);
+      try {
+        const data = await getThresholds(token);
+        if (!alive) return;
+        setThresholds(data);
+        setThresholdDraft({
+          neck_threshold: String(data.neck_threshold),
+          upper_back_threshold: String(data.upper_back_threshold),
+          shoulder_threshold: String(data.shoulder_threshold),
+        });
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          Alert.alert('Session expired', 'Please log in again.');
+        } else {
+          Alert.alert(
+            'Failed to load thresholds',
+            err instanceof Error ? err.message : 'Please try again.',
+          );
+        }
+      } finally {
+        if (alive) setThresholdsLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      alive = false;
+    };
+  }, [token]);
+
+  const parsedDraft = useMemo(() => {
+    const toNumber = (v: string) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    return {
+      neck_threshold: toNumber(thresholdDraft.neck_threshold),
+      upper_back_threshold: toNumber(thresholdDraft.upper_back_threshold),
+      shoulder_threshold: toNumber(thresholdDraft.shoulder_threshold),
+    };
+  }, [thresholdDraft]);
+
+  const hasInvalidDraft =
+    parsedDraft.neck_threshold === null ||
+    parsedDraft.upper_back_threshold === null ||
+    parsedDraft.shoulder_threshold === null;
+
+  const handleSaveThresholds = async () => {
+    if (!token) return;
+    if (!thresholds) return;
+    if (hasInvalidDraft) {
+      Alert.alert('Invalid values', 'Please enter numeric thresholds.');
+      return;
+    }
+
+    const neck = parsedDraft.neck_threshold;
+    const upperBack = parsedDraft.upper_back_threshold;
+    const shoulder = parsedDraft.shoulder_threshold;
+    if (neck == null || upperBack == null || shoulder == null) {
+      Alert.alert('Invalid values', 'Please enter numeric thresholds.');
+      return;
+    }
+
+    const payload: Record<string, number> = {};
+    if (neck !== thresholds.neck_threshold) payload.neck_threshold = neck;
+    if (upperBack !== thresholds.upper_back_threshold)
+      payload.upper_back_threshold = upperBack;
+    if (shoulder !== thresholds.shoulder_threshold)
+      payload.shoulder_threshold = shoulder;
+
+    if (Object.keys(payload).length === 0) {
+      Alert.alert('No changes', 'Your thresholds are already up to date.');
+      return;
+    }
+
+    setThresholdsSaving(true);
+    try {
+      const updated = await updateThresholds(token, payload);
+      setThresholds(updated);
+      setThresholdDraft({
+        neck_threshold: String(updated.neck_threshold),
+        upper_back_threshold: String(updated.upper_back_threshold),
+        shoulder_threshold: String(updated.shoulder_threshold),
+      });
+      Alert.alert('Saved', 'Thresholds updated successfully.');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        Alert.alert('Session expired', 'Please log in again.');
+        return;
+      }
+      Alert.alert(
+        'Save failed',
+        err instanceof Error ? err.message : 'Please try again.',
+      );
+    } finally {
+      setThresholdsSaving(false);
+    }
   };
 
   return (
@@ -133,37 +260,56 @@ const SettingsScreen: React.FC = () => {
           POSTURE DETECTION
         </ThemedText>
         <ThemedCard>
-          <TouchableOpacity style={styles.menuItem}>
-            <ThemedText variant='body'>Neck Sensitivity</ThemedText>
-            <View style={styles.menuItemRight}>
-              <ThemedText variant='body' color={theme.mutedText}>
-                {settings.neckSensitivity}
+          <View style={styles.thresholdsHeader}>
+            <ThemedText variant='body'>Posture thresholds (°)</ThemedText>
+            {thresholdsLoading ? (
+              <ActivityIndicator size='small' color={theme.primary} />
+            ) : (
+              <ThemedText variant='caption' color={theme.mutedText}>
+                {thresholds?.updated_at
+                  ? `Updated ${new Date(thresholds.updated_at).toLocaleString()}`
+                  : '—'}
               </ThemedText>
-              <ChevronRight color={theme.mutedText} size={20} />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <ThemedText variant='body'>
-              Shoulder Correction Threshold
-            </ThemedText>
-            <View style={styles.menuItemRight}>
-              <ThemedText variant='body' color={theme.mutedText}>
-                {settings.shoulderCorrectionThreshold}
-              </ThemedText>
-              <ChevronRight color={theme.mutedText} size={20} />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <ThemedText variant='body'>
-              Upper-back Correction Threshold
-            </ThemedText>
-            <View style={styles.menuItemRight}>
-              <ThemedText variant='body' color={theme.mutedText}>
-                {settings.upperBackCorrectionThreshold}
-              </ThemedText>
-              <ChevronRight color={theme.mutedText} size={20} />
-            </View>
-          </TouchableOpacity>
+            )}
+          </View>
+
+          <ThemedInput
+            label='Neck threshold (10–60°)'
+            placeholder='30'
+            keyboardType='decimal-pad'
+            value={thresholdDraft.neck_threshold}
+            onChangeText={(v) =>
+              setThresholdDraft((p) => ({ ...p, neck_threshold: v }))
+            }
+          />
+          <ThemedInput
+            label='Upper back threshold (10–50°)'
+            placeholder='25'
+            keyboardType='decimal-pad'
+            value={thresholdDraft.upper_back_threshold}
+            onChangeText={(v) =>
+              setThresholdDraft((p) => ({ ...p, upper_back_threshold: v }))
+            }
+          />
+          <ThemedInput
+            label='Shoulder threshold (5–40°)'
+            placeholder='20'
+            keyboardType='decimal-pad'
+            value={thresholdDraft.shoulder_threshold}
+            onChangeText={(v) =>
+              setThresholdDraft((p) => ({ ...p, shoulder_threshold: v }))
+            }
+          />
+
+          <ThemedButton
+            title='Save thresholds'
+            variant='primary'
+            size='md'
+            onPress={handleSaveThresholds}
+            loading={thresholdsSaving}
+            disabled={thresholdsLoading || thresholdsSaving || !thresholds || hasInvalidDraft}
+            style={styles.saveThresholdsButton}
+          />
         </ThemedCard>
       </View>
 
@@ -268,6 +414,22 @@ const SettingsScreen: React.FC = () => {
         </ThemedCard>
       </View>
 
+      <ThemedButton
+        title='Logout'
+        variant='outline'
+        size='lg'
+        onPress={() => {
+          Alert.alert('Logout', 'Are you sure you want to log out?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Logout',
+              style: 'destructive',
+              onPress: () => signOut(),
+            },
+          ]);
+        }}
+      />
+
       <View style={styles.spacer} />
     </Screen>
   );
@@ -282,6 +444,12 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
+  },
+  thresholdsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
   },
   sectionTitle: {
     marginBottom: 8,
@@ -318,6 +486,9 @@ const styles = StyleSheet.create({
   },
   disconnectButton: {
     marginTop: 16,
+  },
+  saveThresholdsButton: {
+    marginTop: 12,
   },
   spacer: {
     height: 32,
