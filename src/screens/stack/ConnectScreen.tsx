@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ProfileStackParamList } from '@/src/navigation/AppTabs';
 import { Screen } from '@/src/components/themed/Screen';
 import { ThemedText } from '@/src/components/themed/ThemedText';
 import { ThemedCard } from '@/src/components/themed/ThemedCard';
@@ -24,7 +26,8 @@ import { useBle } from '@/src/hooks/useBle';
 
 const ConnectScreen: React.FC = () => {
   const { theme } = useTheme();
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const {
     device,
     devices,
@@ -49,10 +52,14 @@ const ConnectScreen: React.FC = () => {
     await disconnectDevice();
   };
 
+  const handleBackToProfile = () => {
+    navigation.navigate('ProfileMain');
+  };
+
   return (
     <Screen scrollable={false}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={handleBackToProfile}>
           <ChevronLeft color={theme.text} size={24} />
         </TouchableOpacity>
         <ThemedText variant='subtitle'>Connect to JALES Shirt</ThemedText>

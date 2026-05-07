@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { NavigatorScreenParams } from '@react-navigation/native';
 import { useTheme } from '@/src/theme/useTheme';
 import {
   Home,
@@ -23,7 +24,7 @@ export type AppTabsParamList = {
   Home: undefined;
   Summary: undefined;
   Chat: undefined;
-  Profile: undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
 export type ProfileStackParamList = {
@@ -102,6 +103,12 @@ export const AppTabs: React.FC = () => {
         options={{
           tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            event.preventDefault();
+            navigation.navigate('Profile', { screen: 'ProfileMain' });
+          },
+        })}
       />
     </Tab.Navigator>
   );
