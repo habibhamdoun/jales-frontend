@@ -13,6 +13,8 @@ import { ThemedText } from '@/src/components/themed/ThemedText';
 import { ThemedInput } from '@/src/components/themed/ThemedInput';
 import { ThemedButton } from '@/src/components/themed/ThemedButton';
 import { useTheme } from '@/src/theme/useTheme';
+import { loginUser } from '@/src/services/auth';
+import { useAuth } from '@/src/auth/AuthContext';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
@@ -25,14 +27,7 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { theme } = useTheme();
-
-  // Static login function for testing
-  const login = (email: string, password: string) => {
-    console.log('Mock login:', { email, password });
-    // TODO: In a real app, this would set authenticated state in context/Redux
-    // For now, just navigate back to Splash which will handle auth state
-    navigation.replace('Splash');
-  };
+  const { signIn } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,11 +35,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
-      // Allow login with any credentials or even empty
-      login(email || 'test@example.com', password || 'test123');
+    try {
+      await loginUser({
+        email,
+        password,
+      });
+      signIn();
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

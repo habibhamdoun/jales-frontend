@@ -17,22 +17,13 @@ interface SplashScreenProps {
 const SplashScreen: React.FC<SplashScreenProps> = ({ navigation }) => {
   const { theme } = useTheme();
 
-  // Static auth state for testing - set to true to bypass login and go directly to app
-  const isAuthed = false;
-
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (isAuthed) {
-        // When authenticated, RootNavigator will switch to AppTabs
-        // For now, just navigate to Login (in a real app, you'd navigate to app via RootNavigator context)
-        navigation.replace('Login');
-      } else {
-        navigation.replace('Login');
-      }
-    }, 2000);
+      navigation.replace('Login');
+    }, 1200);
 
     return () => clearTimeout(timer);
-  }, [isAuthed, navigation]);
+  }, [navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

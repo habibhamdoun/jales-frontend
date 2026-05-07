@@ -102,13 +102,8 @@ export const AppTabs: React.FC = () => {
         component={ProfileStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+          popToTopOnBlur: true,
         }}
-        listeners={({ navigation }) => ({
-          tabPress: (event) => {
-            event.preventDefault();
-            navigation.navigate('Profile', { screen: 'ProfileMain' });
-          },
-        })}
       />
     </Tab.Navigator>
   );
