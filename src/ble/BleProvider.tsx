@@ -11,6 +11,7 @@ import {
   AppState,
   AppStateStatus,
 } from 'react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { BleManager, Device, State, Subscription } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
 import { BLEContextType, TrunkNeutralReference } from './types';
@@ -39,6 +40,8 @@ const BLE_CALIBRATION_CHARACTERISTIC = '12345678-1234-1234-1234-1234567890A5';
 
 const SCAN_SECONDS = 6;
 const DEVICE_NAME = 'PostureMonitor';
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 export const BleContext = createContext<BLEContextType | undefined>(undefined);
 
@@ -252,6 +255,14 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
   // Start scanning
   const startScan = useCallback(async () => {
     if (!isMountedRef.current) return;
+
+    if (isExpoGo) {
+      setErrorMsg(
+        'Bluetooth is not available in Expo Go. Use a development build to connect to the JALES Shirt.',
+      );
+      setIsScanning(false);
+      return;
+    }
 
     setErrorMsg(null);
     setDevices([]);
@@ -560,6 +571,13 @@ export const BleProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Initialize BLE Manager
   useEffect(() => {
+    if (isExpoGo) {
+      setErrorMsg(
+        'Bluetooth is not available in Expo Go. Use a development build to connect to the JALES Shirt.',
+      );
+      return;
+    }
+
     managerRef.current = new BleManager();
 
     return () => {
