@@ -34,7 +34,7 @@ export type ValidateResponse = {
 };
 
 export const loginUser = async (payload: LoginPayload): Promise<LoginResponse> => {
-  const { data } = await apiFetch<LoginResponse>('/api/auth/login', {
+  const { data } = await apiFetch<LoginResponse>('/auth/login', {
     method: 'POST',
     body: payload,
   });
@@ -44,7 +44,7 @@ export const loginUser = async (payload: LoginPayload): Promise<LoginResponse> =
 export const registerUser = async (
   payload: RegisterPayload,
 ): Promise<RegisterResponse> => {
-  const { data } = await apiFetch<RegisterResponse>('/api/auth/register', {
+  const { data } = await apiFetch<RegisterResponse>('/auth/register', {
     method: 'POST',
     body: payload,
   });
@@ -52,7 +52,7 @@ export const registerUser = async (
 };
 
 export const validateToken = async (token: string): Promise<ValidateResponse> => {
-  const { data } = await apiFetch<ValidateResponse>('/api/auth/validate', {
+  const { data } = await apiFetch<ValidateResponse>('/auth/validate', {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,

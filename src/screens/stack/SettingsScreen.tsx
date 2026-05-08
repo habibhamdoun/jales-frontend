@@ -49,9 +49,9 @@ const SettingsScreen: React.FC = () => {
 
   const [thresholds, setThresholds] = useState<Thresholds | null>(null);
   const [thresholdDraft, setThresholdDraft] = useState({
-    neck_threshold: '',
-    upper_back_threshold: '',
-    shoulder_threshold: '',
+    neck_max_angle: '',
+    upper_back_max_angle: '',
+    shoulder_imbalance_max: '',
   });
   const [thresholdsLoading, setThresholdsLoading] = useState(false);
   const [thresholdsSaving, setThresholdsSaving] = useState(false);
@@ -90,9 +90,9 @@ const SettingsScreen: React.FC = () => {
         if (!alive) return;
         setThresholds(data);
         setThresholdDraft({
-          neck_threshold: String(data.neck_threshold),
-          upper_back_threshold: String(data.upper_back_threshold),
-          shoulder_threshold: String(data.shoulder_threshold),
+          neck_max_angle: String(data.neck_max_angle),
+          upper_back_max_angle: String(data.upper_back_max_angle),
+          shoulder_imbalance_max: String(data.shoulder_imbalance_max),
         });
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
@@ -120,16 +120,16 @@ const SettingsScreen: React.FC = () => {
       return Number.isFinite(n) ? n : null;
     };
     return {
-      neck_threshold: toNumber(thresholdDraft.neck_threshold),
-      upper_back_threshold: toNumber(thresholdDraft.upper_back_threshold),
-      shoulder_threshold: toNumber(thresholdDraft.shoulder_threshold),
+      neck_max_angle: toNumber(thresholdDraft.neck_max_angle),
+      upper_back_max_angle: toNumber(thresholdDraft.upper_back_max_angle),
+      shoulder_imbalance_max: toNumber(thresholdDraft.shoulder_imbalance_max),
     };
   }, [thresholdDraft]);
 
   const hasInvalidDraft =
-    parsedDraft.neck_threshold === null ||
-    parsedDraft.upper_back_threshold === null ||
-    parsedDraft.shoulder_threshold === null;
+    parsedDraft.neck_max_angle === null ||
+    parsedDraft.upper_back_max_angle === null ||
+    parsedDraft.shoulder_imbalance_max === null;
 
   const handleSaveThresholds = async () => {
     if (!token) return;
@@ -139,20 +139,20 @@ const SettingsScreen: React.FC = () => {
       return;
     }
 
-    const neck = parsedDraft.neck_threshold;
-    const upperBack = parsedDraft.upper_back_threshold;
-    const shoulder = parsedDraft.shoulder_threshold;
+    const neck = parsedDraft.neck_max_angle;
+    const upperBack = parsedDraft.upper_back_max_angle;
+    const shoulder = parsedDraft.shoulder_imbalance_max;
     if (neck == null || upperBack == null || shoulder == null) {
       Alert.alert('Invalid values', 'Please enter numeric thresholds.');
       return;
     }
 
     const payload: Record<string, number> = {};
-    if (neck !== thresholds.neck_threshold) payload.neck_threshold = neck;
-    if (upperBack !== thresholds.upper_back_threshold)
-      payload.upper_back_threshold = upperBack;
-    if (shoulder !== thresholds.shoulder_threshold)
-      payload.shoulder_threshold = shoulder;
+    if (neck !== thresholds.neck_max_angle) payload.neck_max_angle = neck;
+    if (upperBack !== thresholds.upper_back_max_angle)
+      payload.upper_back_max_angle = upperBack;
+    if (shoulder !== thresholds.shoulder_imbalance_max)
+      payload.shoulder_imbalance_max = shoulder;
 
     if (Object.keys(payload).length === 0) {
       Alert.alert('No changes', 'Your thresholds are already up to date.');
@@ -164,9 +164,9 @@ const SettingsScreen: React.FC = () => {
       const updated = await updateThresholds(token, payload);
       setThresholds(updated);
       setThresholdDraft({
-        neck_threshold: String(updated.neck_threshold),
-        upper_back_threshold: String(updated.upper_back_threshold),
-        shoulder_threshold: String(updated.shoulder_threshold),
+        neck_max_angle: String(updated.neck_max_angle),
+        upper_back_max_angle: String(updated.upper_back_max_angle),
+        shoulder_imbalance_max: String(updated.shoulder_imbalance_max),
       });
       Alert.alert('Saved', 'Thresholds updated successfully.');
     } catch (err) {
@@ -274,30 +274,30 @@ const SettingsScreen: React.FC = () => {
           </View>
 
           <ThemedInput
-            label='Neck threshold (10–60°)'
+            label='Neck max angle (°)'
             placeholder='30'
             keyboardType='decimal-pad'
-            value={thresholdDraft.neck_threshold}
+            value={thresholdDraft.neck_max_angle}
             onChangeText={(v) =>
-              setThresholdDraft((p) => ({ ...p, neck_threshold: v }))
+              setThresholdDraft((p) => ({ ...p, neck_max_angle: v }))
             }
           />
           <ThemedInput
-            label='Upper back threshold (10–50°)'
+            label='Upper back max angle (°)'
             placeholder='25'
             keyboardType='decimal-pad'
-            value={thresholdDraft.upper_back_threshold}
+            value={thresholdDraft.upper_back_max_angle}
             onChangeText={(v) =>
-              setThresholdDraft((p) => ({ ...p, upper_back_threshold: v }))
+              setThresholdDraft((p) => ({ ...p, upper_back_max_angle: v }))
             }
           />
           <ThemedInput
-            label='Shoulder threshold (5–40°)'
+            label='Shoulder imbalance max (°)'
             placeholder='20'
             keyboardType='decimal-pad'
-            value={thresholdDraft.shoulder_threshold}
+            value={thresholdDraft.shoulder_imbalance_max}
             onChangeText={(v) =>
-              setThresholdDraft((p) => ({ ...p, shoulder_threshold: v }))
+              setThresholdDraft((p) => ({ ...p, shoulder_imbalance_max: v }))
             }
           />
 
