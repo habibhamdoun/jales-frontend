@@ -176,21 +176,21 @@ const ProfileScreen: React.FC = () => {
           </View>
 
           <View style={[styles.menuItem, styles.menuItemBorder]}>
-            <ThemedText variant='body'>Neck max angle</ThemedText>
+            <ThemedText variant='body'>Neck threshold</ThemedText>
             <ThemedText variant='body' color={theme.mutedText}>
-              {thresholds ? `${thresholds.neck_max_angle}°` : '—'}
+              {thresholds ? `${thresholds.neck_threshold}°` : '—'}
             </ThemedText>
           </View>
           <View style={[styles.menuItem, styles.menuItemBorder]}>
-            <ThemedText variant='body'>Upper back max angle</ThemedText>
+            <ThemedText variant='body'>Upper back threshold</ThemedText>
             <ThemedText variant='body' color={theme.mutedText}>
-              {thresholds ? `${thresholds.upper_back_max_angle}°` : '—'}
+              {thresholds ? `${thresholds.upper_back_threshold}°` : '—'}
             </ThemedText>
           </View>
           <View style={styles.menuItem}>
-            <ThemedText variant='body'>Shoulder imbalance max</ThemedText>
+            <ThemedText variant='body'>Shoulder threshold</ThemedText>
             <ThemedText variant='body' color={theme.mutedText}>
-              {thresholds ? `${thresholds.shoulder_imbalance_max}°` : '—'}
+              {thresholds ? `${thresholds.shoulder_threshold}°` : '—'}
             </ThemedText>
           </View>
 

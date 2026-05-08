@@ -4,8 +4,13 @@ import { AuthStack } from './AuthStack';
 import { AppTabs } from './AppTabs';
 import { AuthContext, AuthUser } from '@/src/auth/AuthContext';
 import AuthGateSplash from '@/src/screens/auth/AuthGateSplash';
-import { clearStoredToken, getStoredToken, setStoredToken } from '@/src/services/tokenStorage';
-import { validateToken } from '@/src/services/auth';
+import {
+  clearStoredToken,
+  getStoredToken,
+  getStoredUser,
+  setStoredToken,
+  setStoredUser,
+} from '@/src/services/tokenStorage';
 
 export const RootNavigator: React.FC = () => {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
@@ -18,7 +23,10 @@ export const RootNavigator: React.FC = () => {
     let alive = true;
     const run = async () => {
       try {
-        const stored = await getStoredToken();
+        const [stored, storedUser] = await Promise.all([
+          getStoredToken(),
+          getStoredUser(),
+        ]);
         if (!alive) return;
 
         if (!stored) {
@@ -27,16 +35,10 @@ export const RootNavigator: React.FC = () => {
           return;
         }
 
-        const validation = await validateToken(stored);
-        if (!alive) return;
-
+        // Backend has no /auth/validate endpoint. Trust stored credentials;
+        // any subsequent authed request will surface a 401 if the token is invalid.
         setToken(stored);
-        const nextUser: AuthUser = {
-          id: validation.user?.userId || '',
-          name: '',
-          email: validation.user?.email || '',
-        };
-        setUser(nextUser);
+        setUser(storedUser);
       } catch {
         await clearStoredToken();
         if (!alive) return;
@@ -62,6 +64,7 @@ export const RootNavigator: React.FC = () => {
         setToken(nextToken);
         setUser(nextUser);
         setStoredToken(nextToken);
+        setStoredUser(nextUser);
       },
       signOut: () => {
         setToken(null);

@@ -4,6 +4,10 @@ export type AuthUser = {
   id: string;
   name: string;
   email: string;
+  age?: number | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  created_at?: string;
 };
 
 interface AuthContextValue {
