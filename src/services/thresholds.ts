@@ -3,17 +3,16 @@ import { apiFetch } from '@/src/services/api';
 export type Thresholds = {
   id: string;
   user_id: string;
-  neck_max_angle: number;
-  upper_back_max_angle: number;
-  shoulder_imbalance_max: number;
-  vibration_intensity?: number;
+  neck_threshold: number;
+  upper_back_threshold: number;
+  shoulder_threshold: number;
   updated_at: string;
 };
 
 export type UpdateThresholdsPayload = Partial<
   Pick<
     Thresholds,
-    'neck_max_angle' | 'upper_back_max_angle' | 'shoulder_imbalance_max' | 'vibration_intensity'
+    'neck_threshold' | 'upper_back_threshold' | 'shoulder_threshold'
   >
 >;
 
@@ -38,15 +37,19 @@ function pickThresholdsPayload(input: any): any {
 function normalizeThresholds(rawInput: any): Thresholds {
   const raw = pickThresholdsPayload(rawInput);
 
-  const neck = toFiniteNumber(raw?.neck_max_angle ?? raw?.neckMaxAngle);
+  // Accept new snake_case schema, plus legacy aliases for safety.
+  const neck = toFiniteNumber(
+    raw?.neck_threshold ?? raw?.neckThreshold ?? raw?.neck_max_angle,
+  );
   const upper = toFiniteNumber(
-    raw?.upper_back_max_angle ?? raw?.upperBackMaxAngle,
+    raw?.upper_back_threshold ??
+      raw?.upperBackThreshold ??
+      raw?.upper_back_max_angle,
   );
   const shoulder = toFiniteNumber(
-    raw?.shoulder_imbalance_max ?? raw?.shoulderImbalanceMax,
-  );
-  const vibration = toFiniteNumber(
-    raw?.vibration_intensity ?? raw?.vibrationIntensity,
+    raw?.shoulder_threshold ??
+      raw?.shoulderThreshold ??
+      raw?.shoulder_imbalance_max,
   );
 
   if (neck == null || upper == null || shoulder == null) {
@@ -64,11 +67,10 @@ function normalizeThresholds(rawInput: any): Thresholds {
 
   return {
     id: String(raw?.id ?? raw?.thresholds_id ?? ''),
-    user_id: String(raw?.user_id ?? raw?.userId ?? raw?.user_id_fk ?? ''),
-    neck_max_angle: neck,
-    upper_back_max_angle: upper,
-    shoulder_imbalance_max: shoulder,
-    vibration_intensity: vibration ?? undefined,
+    user_id: String(raw?.user_id ?? raw?.userId ?? ''),
+    neck_threshold: neck,
+    upper_back_threshold: upper,
+    shoulder_threshold: shoulder,
     updated_at: String(raw?.updated_at ?? raw?.updatedAt ?? ''),
   };
 }
@@ -96,4 +98,3 @@ export async function updateThresholds(
   });
   return normalizeThresholds(data);
 }
-

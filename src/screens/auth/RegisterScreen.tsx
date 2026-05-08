@@ -370,7 +370,14 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
     setLoading(true);
 
     try {
-      await registerUser({ name: trimmedName, email: trimmedEmail, password });
+      await registerUser({
+        name: trimmedName,
+        email: trimmedEmail,
+        password,
+        age: toNumberOrNull(age),
+        height_cm: toNumberOrNull(heightCm),
+        weight_kg: toNumberOrNull(weightKg),
+      });
       Alert.alert('Success', 'User registered successfully.');
       navigation.navigate('Login');
     } catch (err) {

@@ -1,36 +1,43 @@
 import { apiFetch } from '@/src/services/api';
 
+export type AuthUserDto = {
+  id: string;
+  name: string;
+  email: string;
+  age: number | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  created_at: string;
+};
+
 export type LoginPayload = {
   email: string;
   password: string;
 };
 
 export type LoginResponse = {
+  success: boolean;
   token: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
+  user: AuthUserDto;
 };
 
 export type RegisterPayload = {
   name: string;
   email: string;
   password: string;
+  age?: number | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
+  // Optional initial thresholds; backend defaults are 30 / 25 / 20
+  neck_threshold?: number;
+  upper_back_threshold?: number;
+  shoulder_threshold?: number;
 };
 
 export type RegisterResponse = {
+  success: boolean;
   message: string;
-  user_id: string;
-};
-
-export type ValidateResponse = {
-  valid: boolean;
-  user?: {
-    userId?: string;
-    email?: string;
-  };
+  user: AuthUserDto;
 };
 
 export const loginUser = async (payload: LoginPayload): Promise<LoginResponse> => {
@@ -47,16 +54,6 @@ export const registerUser = async (
   const { data } = await apiFetch<RegisterResponse>('/auth/register', {
     method: 'POST',
     body: payload,
-  });
-  return data;
-};
-
-export const validateToken = async (token: string): Promise<ValidateResponse> => {
-  const { data } = await apiFetch<ValidateResponse>('/auth/validate', {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
   return data;
 };
