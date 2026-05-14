@@ -1,8 +1,10 @@
 import { Platform } from 'react-native';
 import type { AuthUser } from '@/src/auth/AuthContext';
+import type { RulaEvaluation } from '@/src/services/posture';
 
 const TOKEN_KEY = 'jales_auth_token';
 const USER_KEY = 'jales_auth_user';
+const LAST_EVAL_KEY = 'last_posture_result';
 
 let cachedSecureStore:
   | typeof import('expo-secure-store')
@@ -97,4 +99,28 @@ export async function setStoredUser(user: AuthUser): Promise<void> {
 
 export async function clearStoredUser(): Promise<void> {
   await deleteKey(USER_KEY);
+}
+
+// Persist the most recent scored RULA evaluation so the home screen can
+// rehydrate it on app launch. SecureStore is used as the storage backend
+// because it's the only KV store already in the native binary; the payload
+// is well under SecureStore's per-entry size limit.
+export async function getStoredLastEvaluation(): Promise<RulaEvaluation | null> {
+  const raw = await readKey(LAST_EVAL_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as RulaEvaluation;
+  } catch {
+    return null;
+  }
+}
+
+export async function setStoredLastEvaluation(
+  evaluation: RulaEvaluation,
+): Promise<void> {
+  await writeKey(LAST_EVAL_KEY, JSON.stringify(evaluation));
+}
+
+export async function clearStoredLastEvaluation(): Promise<void> {
+  await deleteKey(LAST_EVAL_KEY);
 }

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,8 +7,12 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTheme } from '@/src/theme/useTheme';
 import { ThemedText } from '@/src/components/themed/ThemedText';
 import { ChatBubble } from '@/src/components/ChatBubble';
@@ -17,13 +21,16 @@ import { ChatMessage } from '@/src/data/types';
 import { sendChatMessage } from '@/src/services/openaiChat';
 import { useBle } from '@/src/hooks/useBle';
 import { getTrunkAngles } from '@/src/utils/posture';
+import { useMonitoring } from '@/src/monitoring/MonitoringContext';
+import type { AppTabsParamList } from '@/src/navigation/AppTabs';
 
 const ChatScreen: React.FC = () => {
   const { theme } = useTheme();
-  const { bno, mpu1, postureAnalysis, isConnected, trunkNeutralReference } =
-    useBle();
+  const route = useRoute<RouteProp<AppTabsParamList, 'Chat'>>();
+  const navigation = useNavigation<BottomTabNavigationProp<AppTabsParamList>>();
+  const { bno, mpu1, isConnected, trunkNeutralReference } = useBle();
+  const { latestEvaluation, hasUserServerCalibration } = useMonitoring();
 
-  // Static messages state for testing
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
@@ -33,17 +40,21 @@ const ChatScreen: React.FC = () => {
     },
   ]);
 
-  // Static addMessage function for testing
-  const addMessage = (message: ChatMessage) => {
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  const addMessage = useCallback((message: ChatMessage) => {
     setMessages((prev) => [...prev, message]);
-  };
+  }, []);
 
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const isSendingRef = useRef(false);
   const flatListRef = useRef<FlatList>(null);
+  const seedInFlightRef = useRef(false);
 
-  const sendMessage = async (text: string) => {
-    if (text.length === 0 || isSending) return;
+  const sendMessage = useCallback(async (text: string) => {
+    if (text.length === 0 || isSendingRef.current) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -52,9 +63,10 @@ const ChatScreen: React.FC = () => {
       timestamp: new Date(),
     };
 
-    const previousMessages = messages;
+    const previousMessages = messagesRef.current;
     addMessage(userMessage);
     setInputText('');
+    isSendingRef.current = true;
     setIsSending(true);
 
     try {
@@ -80,19 +92,36 @@ const ChatScreen: React.FC = () => {
         timestamp: new Date(),
       });
     } finally {
+      isSendingRef.current = false;
       setIsSending(false);
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  };
+  }, [addMessage]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const prompt = route.params?.dailyCoachPrompt?.trim();
+      if (!prompt || seedInFlightRef.current) return;
+      seedInFlightRef.current = true;
+      (async () => {
+        try {
+          await sendMessage(prompt);
+        } finally {
+          navigation.setParams({ dailyCoachPrompt: undefined });
+          seedInFlightRef.current = false;
+        }
+      })();
+    }, [route.params?.dailyCoachPrompt, navigation, sendMessage]),
+  );
 
   const handleSend = async () => {
     await sendMessage(inputText.trim());
   };
 
   const handleSendCurrentAngles = async () => {
-    if (!isConnected || (!bno && !mpu1 && !postureAnalysis)) {
+    if (!isConnected || (!bno && !mpu1 && !latestEvaluation)) {
       await sendMessage(
         'My JALES Shirt is not connected yet, so no live posture angles are available. Give me general setup advice.',
       );
@@ -106,18 +135,34 @@ const ChatScreen: React.FC = () => {
 
     const angleSummary = [
       'Analyze my current JALES posture sensor reading and give concise corrective advice.',
+      'Note: raw values below are from the shirt; the backend scores posture using account or device calibration on the server (RULA-style part scores, then optional threshold bump).',
+      hasUserServerCalibration
+        ? 'Account calibration is active on the server for this session.'
+        : 'No account calibration row detected in the app state — the server may still use per-device calibration or raw scoring.',
       bno
-        ? `Neck/BNO orientation: heading ${bno.heading.toFixed(1)} degrees, roll ${bno.roll.toFixed(1)} degrees, pitch ${bno.pitch.toFixed(1)} degrees.`
-        : 'Neck/BNO orientation: unavailable.',
+        ? `BNO (raw trunk reference): heading ${bno.heading.toFixed(1)}°, roll ${bno.roll.toFixed(1)}°, pitch ${bno.pitch.toFixed(1)}°.`
+        : 'BNO orientation: unavailable.',
       upperBackAngles.absolute
-        ? `Upper back/MPU1 absolute angles: pitch ${upperBackAngles.absolute.pitch.toFixed(1)} degrees, roll ${upperBackAngles.absolute.roll.toFixed(1)} degrees.`
-        : 'Upper back/MPU1 absolute angles: unavailable.',
+        ? `MPU1-derived upper-back angles (client only, not the server BNO trunk flexion): pitch ${upperBackAngles.absolute.pitch.toFixed(1)}°, roll ${upperBackAngles.absolute.roll.toFixed(1)}°.`
+        : 'MPU1 absolute angles: unavailable.',
       upperBackAngles.relative
-        ? `Upper back/MPU1 relative-to-neutral angles: pitch ${upperBackAngles.relative.pitch.toFixed(1)} degrees, roll ${upperBackAngles.relative.roll.toFixed(1)} degrees.`
-        : 'Upper back/MPU1 relative-to-neutral angles: unavailable.',
-      postureAnalysis
-        ? `Posture scores: neck ${postureAnalysis.neck.totalScore} (${postureAnalysis.neck.label}), upper back ${postureAnalysis.upperBack.totalScore} (${postureAnalysis.upperBack.label}), shoulders ${postureAnalysis.shoulders.totalScore} (${postureAnalysis.shoulders.label}).`
-        : 'REBA-style scores: unavailable.',
+        ? `MPU1 vs client trunk neutral reference (client only): pitch ${upperBackAngles.relative.pitch.toFixed(1)}°, roll ${upperBackAngles.relative.roll.toFixed(1)}°.`
+        : 'MPU1 relative-to-client-neutral: unavailable.',
+      latestEvaluation
+        ? [
+            `Server-evaluated angles (calibrated-relative): upper back / trunk flexion ${latestEvaluation.angles.trunkFlexion.toFixed(1)}°, left shoulder ${latestEvaluation.angles.leftShoulderAngle.toFixed(1)}°, right shoulder ${latestEvaluation.angles.rightShoulderAngle.toFixed(1)}°.`,
+            latestEvaluation.trunkTwistFlag !== undefined ||
+            latestEvaluation.trunkTiltFlag !== undefined
+              ? `Server trunk context flags: twist ${String(latestEvaluation.trunkTwistFlag)}, tilt ${String(latestEvaluation.trunkTiltFlag)}.`
+              : null,
+            `Backend RULA part scores: trunk ${latestEvaluation.trunkScore}/4, left shoulder ${latestEvaluation.leftShoulderScore}/4, right shoulder ${latestEvaluation.rightShoulderScore}/4. Action level ${latestEvaluation.actionLevel}/4.`,
+            typeof latestEvaluation.overallPercent === 'number'
+              ? `Overall score (0–100): ${latestEvaluation.overallPercent}.`
+              : null,
+          ]
+            .filter(Boolean)
+            .join('\n')
+        : 'Backend evaluation: unavailable.',
       'Tell me what looks good, what needs correction, and one action I should take now.',
     ].join('\n');
 
@@ -152,6 +197,26 @@ const ChatScreen: React.FC = () => {
           keyboardShouldPersistTaps='handled'
           onContentSizeChange={() =>
             flatListRef.current?.scrollToEnd({ animated: true })
+          }
+          ListFooterComponent={
+            isSending ? (
+              <View style={styles.thinkingWrap}>
+                <View
+                  style={[
+                    styles.thinkingBubble,
+                    {
+                      backgroundColor: theme.surface,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                >
+                  <ActivityIndicator size='small' color={theme.primary} />
+                  <ThemedText variant='caption' color={theme.mutedText} style={styles.thinkingLabel}>
+                    Thinking…
+                  </ThemedText>
+                </View>
+              </View>
+            ) : null
           }
         />
 
@@ -271,6 +336,24 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  thinkingWrap: {
+    alignSelf: 'flex-start',
+    maxWidth: '72%',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  thinkingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  thinkingLabel: {
+    fontSize: 13,
   },
 });
 

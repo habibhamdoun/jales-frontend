@@ -1,0 +1,443 @@
+{
+  "scenarios": [
+
+    {
+      "id": "scenario_01",
+      "label": "Perfect posture — all neutral",
+      "description": "User sitting perfectly upright. All sensors at baseline. No alert expected.",
+      "expectedActionLevel": 1,
+      "expectedAlert": false,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 0.00, "roll": 0.50, "pitch": 3.00 },
+        "mpu1": { "Ax": -14500, "Ay": 200,   "Az": -5300, "Gx": 5,   "Gy": -2,  "Gz": -1  },
+        "mpu2": { "Ax": -8500,  "Ay": 300,   "Az": 9700,  "Gx": -3,  "Gy": -1,  "Gz": 2   }
+      },
+      "expectedScores": {
+        "neckFlexion": 3,
+        "trunkFlexion": 3,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 2,
+        "rightShoulderAngle": 2,
+        "neckScore": 1,
+        "trunkScore": 1,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 1
+      }
+    },
+
+    {
+      "id": "scenario_02",
+      "label": "Slight neck tilt — borderline safe",
+      "description": "User leaning head forward slightly ~15 degrees. Within acceptable range. No alert.",
+      "expectedActionLevel": 2,
+      "expectedAlert": false,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 1.20, "roll": 0.80, "pitch": 15.00 },
+        "mpu1": { "Ax": -14500, "Ay": 250,   "Az": -5300, "Gx": 8,   "Gy": -3,  "Gz": -2  },
+        "mpu2": { "Ax": -8500,  "Ay": 350,   "Az": 9700,  "Gx": -4,  "Gy": -2,  "Gz": 3   }
+      },
+      "expectedScores": {
+        "neckFlexion": 15,
+        "trunkFlexion": 15,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 3,
+        "rightShoulderAngle": 2,
+        "neckScore": 2,
+        "trunkScore": 2,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 2
+      }
+    },
+
+    {
+      "id": "scenario_03",
+      "label": "Forward neck — investigate soon",
+      "description": "User head jutting forward past 20 degrees. RULA neck score hits 3. Soft alert.",
+      "expectedActionLevel": 3,
+      "expectedAlert": true,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 2.10, "roll": 1.00, "pitch": 25.00 },
+        "mpu1": { "Ax": -14500, "Ay": 300,   "Az": -5300, "Gx": 10,  "Gy": -4,  "Gz": -2  },
+        "mpu2": { "Ax": -8500,  "Ay": 400,   "Az": 9700,  "Gx": -5,  "Gy": -2,  "Gz": 3   }
+      },
+      "expectedScores": {
+        "neckFlexion": 25,
+        "trunkFlexion": 25,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 3,
+        "rightShoulderAngle": 3,
+        "neckScore": 3,
+        "trunkScore": 3,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 3
+      }
+    },
+
+    {
+      "id": "scenario_04",
+      "label": "Severe forward hunch — fix immediately",
+      "description": "User hunched over desk heavily. Trunk pitch >60 degrees. Action level 4. Vibration triggered.",
+      "expectedActionLevel": 4,
+      "expectedAlert": true,
+      "expectedVibration": true,
+      "sensorReading": {
+        "bno": { "heading": 3.50, "roll": 2.00, "pitch": 68.00 },
+        "mpu1": { "Ax": -14500, "Ay": 500,   "Az": -5300, "Gx": 15,  "Gy": -5,  "Gz": -3  },
+        "mpu2": { "Ax": -8500,  "Ay": 600,   "Az": 9700,  "Gx": -7,  "Gy": -3,  "Gz": 4   }
+      },
+      "expectedScores": {
+        "neckFlexion": 68,
+        "trunkFlexion": 68,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 4,
+        "rightShoulderAngle": 4,
+        "neckScore": 3,
+        "trunkScore": 4,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 4
+      }
+    },
+
+    {
+      "id": "scenario_05",
+      "label": "Left shoulder elevated only",
+      "description": "User resting left elbow on armrest awkwardly, left shoulder shrugged up ~50 degrees. Right shoulder fine.",
+      "expectedActionLevel": 3,
+      "expectedAlert": true,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 1.00, "roll": 0.60, "pitch": 5.00 },
+        "mpu1": { "Ax": -14500, "Ay": 8000,  "Az": -5300, "Gx": 12,  "Gy": -6,  "Gz": -2  },
+        "mpu2": { "Ax": -8500,  "Ay": 400,   "Az": 9700,  "Gx": -4,  "Gy": -2,  "Gz": 3   }
+      },
+      "expectedScores": {
+        "neckFlexion": 5,
+        "trunkFlexion": 5,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 50,
+        "rightShoulderAngle": 3,
+        "neckScore": 1,
+        "trunkScore": 1,
+        "leftShoulderScore": 3,
+        "rightShoulderScore": 1,
+        "actionLevel": 3
+      }
+    },
+
+    {
+      "id": "scenario_06",
+      "label": "Right shoulder elevated only",
+      "description": "User using mouse with right arm raised at ~50 degrees. Left shoulder neutral.",
+      "expectedActionLevel": 3,
+      "expectedAlert": true,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 1.00, "roll": 0.60, "pitch": 5.00 },
+        "mpu1": { "Ax": -14500, "Ay": 300,   "Az": -5300, "Gx": 5,   "Gy": -2,  "Gz": -1  },
+        "mpu2": { "Ax": -8500,  "Ay": 9800,  "Az": 9680,  "Gx": -120,"Gy": -24, "Gz": 131 }
+      },
+      "expectedScores": {
+        "neckFlexion": 5,
+        "trunkFlexion": 5,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 3,
+        "rightShoulderAngle": 47,
+        "neckScore": 1,
+        "trunkScore": 1,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 3,
+        "actionLevel": 3
+      }
+    },
+
+    {
+      "id": "scenario_07",
+      "label": "Both shoulders raised high — critical",
+      "description": "User reaching forward with both arms raised above 90 degrees. Maximum shoulder score.",
+      "expectedActionLevel": 4,
+      "expectedAlert": true,
+      "expectedVibration": true,
+      "sensorReading": {
+        "bno": { "heading": 2.00, "roll": 1.00, "pitch": 10.00 },
+        "mpu1": { "Ax": -14500, "Ay": 13000, "Az": -5300, "Gx": 20,  "Gy": -8,  "Gz": -4  },
+        "mpu2": { "Ax": -8500,  "Ay": 12500, "Az": 9680,  "Gx": -15, "Gy": -6,  "Gz": 5   }
+      },
+      "expectedScores": {
+        "neckFlexion": 10,
+        "trunkFlexion": 10,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 92,
+        "rightShoulderAngle": 95,
+        "neckScore": 1,
+        "trunkScore": 2,
+        "leftShoulderScore": 4,
+        "rightShoulderScore": 4,
+        "actionLevel": 4
+      }
+    },
+
+    {
+      "id": "scenario_08",
+      "label": "Trunk lateral tilt (side bend)",
+      "description": "User leaning body to the right. BNO roll > 10 degrees. Trunk score gets +1.",
+      "expectedActionLevel": 3,
+      "expectedAlert": true,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 1.00, "roll": 14.00, "pitch": 8.00 },
+        "mpu1": { "Ax": -14500, "Ay": 250,   "Az": -5300, "Gx": 8,   "Gy": -3,  "Gz": -2  },
+        "mpu2": { "Ax": -8500,  "Ay": 350,   "Az": 9700,  "Gx": -4,  "Gy": -2,  "Gz": 3   }
+      },
+      "expectedScores": {
+        "neckFlexion": 8,
+        "trunkFlexion": 8,
+        "trunkTwist": false,
+        "trunkTilt": true,
+        "leftShoulderAngle": 3,
+        "rightShoulderAngle": 2,
+        "neckScore": 1,
+        "trunkScore": 3,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 3
+      }
+    },
+
+    {
+      "id": "scenario_09",
+      "label": "Trunk rotation (twist)",
+      "description": "User twisted in chair to face a second monitor. BNO heading > 10 degrees.",
+      "expectedActionLevel": 3,
+      "expectedAlert": true,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 22.00, "roll": 1.00, "pitch": 6.00 },
+        "mpu1": { "Ax": -14500, "Ay": 250,   "Az": -5300, "Gx": 8,   "Gy": -3,  "Gz": -2  },
+        "mpu2": { "Ax": -8500,  "Ay": 350,   "Az": 9700,  "Gx": -4,  "Gy": -2,  "Gz": 3   }
+      },
+      "expectedScores": {
+        "neckFlexion": 6,
+        "trunkFlexion": 6,
+        "trunkTwist": true,
+        "trunkTilt": false,
+        "leftShoulderAngle": 3,
+        "rightShoulderAngle": 2,
+        "neckScore": 1,
+        "trunkScore": 3,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 3
+      }
+    },
+
+    {
+      "id": "scenario_10",
+      "label": "Worst case — everything bad",
+      "description": "Full combination: severe hunch + both shoulders up + trunk twisted and tilted. All scores maxed.",
+      "expectedActionLevel": 4,
+      "expectedAlert": true,
+      "expectedVibration": true,
+      "sensorReading": {
+        "bno": { "heading": 30.00, "roll": 18.00, "pitch": 72.00 },
+        "mpu1": { "Ax": -14500, "Ay": 13000, "Az": -5300, "Gx": 25,  "Gy": -10, "Gz": -5  },
+        "mpu2": { "Ax": -8500,  "Ay": 12800, "Az": 9680,  "Gx": -20, "Gy": -8,  "Gz": 6   }
+      },
+      "expectedScores": {
+        "neckFlexion": 72,
+        "trunkFlexion": 72,
+        "trunkTwist": true,
+        "trunkTilt": true,
+        "leftShoulderAngle": 92,
+        "rightShoulderAngle": 90,
+        "neckScore": 3,
+        "trunkScore": 6,
+        "leftShoulderScore": 4,
+        "rightShoulderScore": 4,
+        "actionLevel": 4
+      }
+    },
+
+    {
+      "id": "scenario_11",
+      "label": "Neck extension (looking up)",
+      "description": "User looking upward. Negative pitch = neck extension. RULA Step 9 returns score 4.",
+      "expectedActionLevel": 4,
+      "expectedAlert": true,
+      "expectedVibration": true,
+      "sensorReading": {
+        "bno": { "heading": 0.50, "roll": 0.50, "pitch": -12.00 },
+        "mpu1": { "Ax": -14500, "Ay": 200,   "Az": -5300, "Gx": 5,   "Gy": -2,  "Gz": -1  },
+        "mpu2": { "Ax": -8500,  "Ay": 300,   "Az": 9700,  "Gx": -3,  "Gy": -1,  "Gz": 2   }
+      },
+      "expectedScores": {
+        "neckFlexion": -12,
+        "trunkFlexion": 0,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 2,
+        "rightShoulderAngle": 2,
+        "neckScore": 4,
+        "trunkScore": 1,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 4
+      }
+    },
+
+    {
+      "id": "scenario_12",
+      "label": "Good posture recovery after bad",
+      "description": "User corrected posture after an alert. All scores back to 1. Alert cleared.",
+      "expectedActionLevel": 1,
+      "expectedAlert": false,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 0.30, "roll": 0.40, "pitch": 4.00 },
+        "mpu1": { "Ax": -14500, "Ay": 180,   "Az": -5300, "Gx": 3,   "Gy": -1,  "Gz": -1  },
+        "mpu2": { "Ax": -8500,  "Ay": 220,   "Az": 9700,  "Gx": -2,  "Gy": -1,  "Gz": 1   }
+      },
+      "expectedScores": {
+        "neckFlexion": 4,
+        "trunkFlexion": 4,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 2,
+        "rightShoulderAngle": 1,
+        "neckScore": 1,
+        "trunkScore": 1,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 1
+      }
+    },
+
+    {
+      "id": "scenario_13",
+      "label": "Sensor noise — minor jitter",
+      "description": "Simulates small gyro noise while user is still. Should not trigger any alert.",
+      "expectedActionLevel": 1,
+      "expectedAlert": false,
+      "expectedVibration": false,
+      "sensorReading": {
+        "bno": { "heading": 0.12, "roll": 0.23, "pitch": 2.80 },
+        "mpu1": { "Ax": -14501, "Ay": 190,   "Az": -5298, "Gx": 2,   "Gy": -1,  "Gz": 0   },
+        "mpu2": { "Ax": -8498,  "Ay": 280,   "Az": 9702,  "Gx": -1,  "Gy": 0,   "Gz": 1   }
+      },
+      "expectedScores": {
+        "neckFlexion": 2,
+        "trunkFlexion": 2,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 2,
+        "rightShoulderAngle": 2,
+        "neckScore": 1,
+        "trunkScore": 1,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 1
+      }
+    },
+
+    {
+      "id": "scenario_14",
+      "label": "Session start — calibration baseline",
+      "description": "First reading of a session. Used to capture neutral baseline for each user. All values near zero.",
+      "expectedActionLevel": 1,
+      "expectedAlert": false,
+      "expectedVibration": false,
+      "isCalibrationReading": true,
+      "sensorReading": {
+        "bno": { "heading": 0.00, "roll": 0.00, "pitch": 0.00 },
+        "mpu1": { "Ax": -14488, "Ay": 0,     "Az": -5264, "Gx": 0,   "Gy": 0,   "Gz": 0   },
+        "mpu2": { "Ax": -8436,  "Ay": 0,     "Az": 9680,  "Gx": 0,   "Gy": 0,   "Gz": 0   }
+      },
+      "expectedScores": {
+        "neckFlexion": 0,
+        "trunkFlexion": 0,
+        "trunkTwist": false,
+        "trunkTilt": false,
+        "leftShoulderAngle": 0,
+        "rightShoulderAngle": 0,
+        "neckScore": 1,
+        "trunkScore": 1,
+        "leftShoulderScore": 1,
+        "rightShoulderScore": 1,
+        "actionLevel": 1
+      }
+    },
+
+    {
+      "id": "scenario_15",
+      "label": "Persistent bad posture — alert fires after 15s",
+      "description": "Simulates a sequence of 5 consecutive bad readings over 15 seconds. Alert should fire on the 5th reading.",
+      "expectedActionLevel": 3,
+      "expectedAlert": true,
+      "expectedVibration": false,
+      "isPersistenceTest": true,
+      "persistenceDurationSeconds": 15,
+      "readings": [
+        {
+          "t": 0,
+          "sensorReading": { "bno": { "heading": 2.00, "roll": 1.00, "pitch": 26.00 }, "mpu1": { "Ax": -14500, "Ay": 300, "Az": -5300, "Gx": 10, "Gy": -4, "Gz": -2 }, "mpu2": { "Ax": -8500, "Ay": 400, "Az": 9700, "Gx": -5, "Gy": -2, "Gz": 3 } },
+          "shouldFireAlert": false
+        },
+        {
+          "t": 3,
+          "sensorReading": { "bno": { "heading": 2.10, "roll": 1.10, "pitch": 27.00 }, "mpu1": { "Ax": -14500, "Ay": 310, "Az": -5300, "Gx": 10, "Gy": -4, "Gz": -2 }, "mpu2": { "Ax": -8500, "Ay": 410, "Az": 9700, "Gx": -5, "Gy": -2, "Gz": 3 } },
+          "shouldFireAlert": false
+        },
+        {
+          "t": 6,
+          "sensorReading": { "bno": { "heading": 2.20, "roll": 1.00, "pitch": 26.50 }, "mpu1": { "Ax": -14500, "Ay": 305, "Az": -5300, "Gx": 10, "Gy": -4, "Gz": -2 }, "mpu2": { "Ax": -8500, "Ay": 405, "Az": 9700, "Gx": -5, "Gy": -2, "Gz": 3 } },
+          "shouldFireAlert": false
+        },
+        {
+          "t": 10,
+          "sensorReading": { "bno": { "heading": 2.00, "roll": 1.20, "pitch": 28.00 }, "mpu1": { "Ax": -14500, "Ay": 320, "Az": -5300, "Gx": 10, "Gy": -4, "Gz": -2 }, "mpu2": { "Ax": -8500, "Ay": 415, "Az": 9700, "Gx": -5, "Gy": -2, "Gz": 3 } },
+          "shouldFireAlert": false
+        },
+        {
+          "t": 15,
+          "sensorReading": { "bno": { "heading": 2.10, "roll": 1.10, "pitch": 27.50 }, "mpu1": { "Ax": -14500, "Ay": 315, "Az": -5300, "Gx": 10, "Gy": -4, "Gz": -2 }, "mpu2": { "Ax": -8500, "Ay": 408, "Az": 9700, "Gx": -5, "Gy": -2, "Gz": 3 } },
+          "shouldFireAlert": true
+        }
+      ]
+    },
+
+    {
+      "id": "scenario_16",
+      "label": "Bad posture interrupted — alert resets",
+      "description": "User goes bad for 8 seconds then corrects before 15s timer expires. Alert must NOT fire.",
+      "expectedAlert": false,
+      "isPersistenceTest": true,
+      "readings": [
+        {
+          "t": 0,
+          "sensorReading": { "bno": { "heading": 2.00, "roll": 1.00, "pitch": 26.00 }, "mpu1": { "Ax": -14500, "Ay": 300, "Az": -5300, "Gx": 10, "Gy": -4, "Gz": -2 }, "mpu2": { "Ax": -8500, "Ay": 400, "Az": 9700, "Gx": -5, "Gy": -2, "Gz": 3 } },
+          "shouldFireAlert": false
+        },
+        {
+          "t": 8,
+          "sensorReading": { "bno": { "heading": 0.30, "roll": 0.40, "pitch": 4.00 }, "mpu1": { "Ax": -14500, "Ay": 180, "Az": -5300, "Gx": 3, "Gy": -1, "Gz": -1 }, "mpu2": { "Ax": -8500, "Ay": 220, "Az": 9700, "Gx": -2, "Gy": -1, "Gz": 1 } },
+          "shouldFireAlert": false,
+          "note": "User corrected posture — timer resets"
+        }
+      ]
+    }
+
+  ]
+}

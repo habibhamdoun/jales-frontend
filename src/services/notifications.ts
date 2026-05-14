@@ -92,8 +92,30 @@ export const sendPostureReminder = async (): Promise<void> => {
   );
 };
 
-export const sendPostureMisalignmentAlert = async (
-  body: string,
+// Fired by MonitoringProvider when bad posture has been sustained for the
+// persistence window. Names the worst-offending body part in the body copy
+// so the user knows exactly what to fix.
+export const sendWorstBodyPartAlert = async (
+  message: string,
+  actionLevel: 3 | 4,
 ): Promise<void> => {
-  await scheduleLocalNotification('Posture Alert', body);
+  const title =
+    actionLevel >= 4 ? 'Fix your posture now' : 'Posture alert';
+  await scheduleLocalNotification(title, message);
+};
+
+// Backwards-compatible helpers used by the Dev Tools card to fire a generic
+// L3/L4 alert without going through the body-part picker.
+export const sendActionLevel3Alert = async (): Promise<void> => {
+  await scheduleLocalNotification(
+    'Posture alert',
+    'Your posture needs adjustment — please sit up.',
+  );
+};
+
+export const sendActionLevel4Alert = async (): Promise<void> => {
+  await scheduleLocalNotification(
+    'Fix your posture now',
+    'Poor posture detected — correct your position now.',
+  );
 };

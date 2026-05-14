@@ -19,10 +19,16 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
   const isUser = sender === 'user';
 
   return (
-    <View style={[styles.container, isUser ? styles.userContainer : styles.assistantContainer]}>
+    <View
+      style={[
+        styles.container,
+        isUser ? styles.userContainer : styles.assistantContainer,
+      ]}
+    >
       <View
         style={[
           styles.bubble,
+          isUser ? styles.userBubble : styles.assistantBubble,
           {
             backgroundColor: isUser ? theme.primary : theme.surface,
             borderWidth: isUser ? 0 : 1,
@@ -31,8 +37,9 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         ]}
       >
         <ThemedText
-          variant="body"
+          variant={isUser ? 'body' : 'caption'}
           color={isUser ? '#FFFFFF' : theme.text}
+          style={!isUser ? styles.assistantText : undefined}
         >
           {text}
         </ThemedText>
@@ -43,18 +50,31 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
     maxWidth: '80%',
   },
   userContainer: {
     alignSelf: 'flex-end',
+    marginBottom: 12,
   },
   assistantContainer: {
     alignSelf: 'flex-start',
+    maxWidth: '72%',
+    marginBottom: 8,
   },
   bubble: {
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 16,
+  },
+  userBubble: {},
+  assistantBubble: {
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  // Slightly larger than raw caption for long AI replies (caption is 12px).
+  assistantText: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

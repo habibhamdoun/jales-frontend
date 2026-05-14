@@ -10,13 +10,11 @@ export interface User {
 }
 
 export interface PostureAngles {
-  neck: number;
   upperBack: number;
   shoulders: number;
 }
 
 export interface PostureThresholds {
-  neckAngleLimit: number;
   upperBackAngleLimit: number;
   shoulderTiltLimit: number;
 }
@@ -102,7 +100,7 @@ export interface Settings {
   vibrationIntensity: number;
   sensitivity: number;
   reminderFrequency: string;
-  neckSensitivity: string;
+  postureSensitivity: string;
   shoulderCorrectionThreshold: string;
   upperBackCorrectionThreshold: string;
   vibrationAlerts: boolean;

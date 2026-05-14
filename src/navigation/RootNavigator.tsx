@@ -11,6 +11,9 @@ import {
   setStoredToken,
   setStoredUser,
 } from '@/src/services/tokenStorage';
+import { MonitoringProvider } from '@/src/monitoring/MonitoringProvider';
+import { deleteUserCalibration } from '@/src/services/userCalibration';
+import { clearCalibrationSnapshot } from '@/src/services/calibrationSnapshotStorage';
 
 export const RootNavigator: React.FC = () => {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
@@ -67,9 +70,28 @@ export const RootNavigator: React.FC = () => {
         setStoredUser(nextUser);
       },
       signOut: () => {
-        setToken(null);
-        setUser(null);
-        clearStoredToken();
+        const t = token;
+        void (async () => {
+          if (t) {
+            try {
+              await deleteUserCalibration(t);
+            } catch {
+              /* offline / expired token — still sign out locally */
+            }
+          }
+          try {
+            await clearCalibrationSnapshot();
+          } catch {
+            /* ignore */
+          }
+          try {
+            await clearStoredToken();
+          } catch {
+            /* ignore */
+          }
+          setToken(null);
+          setUser(null);
+        })();
       },
     }),
     [isAuthed, token, user],
@@ -81,7 +103,9 @@ export const RootNavigator: React.FC = () => {
         {isBootstrapping ? (
           <AuthGateSplash />
         ) : isAuthed ? (
-          <AppTabs />
+          <MonitoringProvider>
+            <AppTabs />
+          </MonitoringProvider>
         ) : (
           <AuthStack />
         )}

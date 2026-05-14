@@ -19,11 +19,17 @@ import { SummaryTopTabs } from './SummaryTopTabs';
 import ConnectScreen from '@/src/screens/stack/ConnectScreen';
 import SettingsScreen from '@/src/screens/stack/SettingsScreen';
 import CalibrationScreen from '@/src/screens/CalibrationScreen';
+import SessionDetailScreen from '@/src/screens/stack/SessionDetailScreen';
+
+export type ChatTabParams = {
+  /** When set, Chat opens this user message and requests a reply (e.g. daily summary review). */
+  dailyCoachPrompt?: string;
+};
 
 export type AppTabsParamList = {
   Home: undefined;
   Summary: undefined;
-  Chat: undefined;
+  Chat: ChatTabParams | undefined;
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
@@ -32,6 +38,7 @@ export type ProfileStackParamList = {
   Connect: undefined;
   Settings: undefined;
   Calibration: undefined;
+  SessionDetail: { sessionId: string; startTime?: string };
 };
 
 const Tab = createBottomTabNavigator<AppTabsParamList>();
@@ -44,6 +51,10 @@ const ProfileStackNavigator: React.FC = () => {
       <ProfileStack.Screen name='Connect' component={ConnectScreen} />
       <ProfileStack.Screen name='Settings' component={SettingsScreen} />
       <ProfileStack.Screen name='Calibration' component={CalibrationScreen} />
+      <ProfileStack.Screen
+        name='SessionDetail'
+        component={SessionDetailScreen}
+      />
     </ProfileStack.Navigator>
   );
 };
