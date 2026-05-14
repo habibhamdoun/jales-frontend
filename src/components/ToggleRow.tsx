@@ -7,21 +7,24 @@ interface ToggleRowProps {
   label: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
+  disabled?: boolean;
 }
 
 export const ToggleRow: React.FC<ToggleRowProps> = ({
   label,
   value,
   onValueChange,
+  disabled = false,
 }) => {
   const { theme } = useTheme();
 
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, disabled && styles.rowDisabled]}>
       <ThemedText variant="body">{label}</ThemedText>
       <Switch
         value={value}
         onValueChange={onValueChange}
+        disabled={disabled}
         trackColor={{ false: theme.border, true: theme.primary }}
         thumbColor="#FFFFFF"
       />
@@ -37,5 +40,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  rowDisabled: {
+    opacity: 0.55,
   },
 });

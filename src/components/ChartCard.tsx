@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Line, Circle, Polyline } from 'react-native-svg';
 import { useTheme } from '@/src/theme/useTheme';
 import { ThemedCard } from './themed/ThemedCard';
@@ -22,14 +22,29 @@ export const ChartCard: React.FC<ChartCardProps> = ({
   type = 'bar',
 }) => {
   const { theme } = useTheme();
-  const chartWidth = Dimensions.get('window').width - 64;
+  const { width: windowWidth } = useWindowDimensions();
+  const chartWidth = Math.max(200, windowWidth - 64);
   const chartHeight = 150;
   const padding = 20;
 
-  const maxValue = Math.max(...data.map((d) => d.value), 100);
-  const barWidth = (chartWidth - padding * 2) / data.length;
+  const maxValue = useMemo(() => {
+    if (!data.length) return 100;
+    return Math.max(100, ...data.map((d) => d.value));
+  }, [data]);
+
+  const barWidth =
+    data.length > 0 ? (chartWidth - padding * 2) / data.length : 0;
+
+  const lineSpan = Math.max(1, data.length - 1);
 
   const renderBarChart = () => {
+    if (!data.length) {
+      return (
+        <ThemedText variant="caption" color={theme.mutedText} style={styles.empty}>
+          No data points for this chart yet.
+        </ThemedText>
+      );
+    }
     return (
       <View style={styles.chartContainer}>
         <Svg width={chartWidth} height={chartHeight}>
@@ -60,6 +75,7 @@ export const ChartCard: React.FC<ChartCardProps> = ({
               variant="caption"
               color={theme.mutedText}
               style={[styles.label, { width: barWidth }]}
+              numberOfLines={1}
             >
               {point.label}
             </ThemedText>
@@ -70,9 +86,17 @@ export const ChartCard: React.FC<ChartCardProps> = ({
   };
 
   const renderLineChart = () => {
+    if (!data.length) {
+      return (
+        <ThemedText variant="caption" color={theme.mutedText} style={styles.empty}>
+          No data points for this chart yet.
+        </ThemedText>
+      );
+    }
     const points = data
       .map((point, index) => {
-        const x = padding + (index / (data.length - 1)) * (chartWidth - padding * 2);
+        const x =
+          padding + (index / lineSpan) * (chartWidth - padding * 2);
         const y =
           chartHeight - 20 - (point.value / maxValue) * (chartHeight - 40);
         return `${x},${y}`;
@@ -87,9 +111,11 @@ export const ChartCard: React.FC<ChartCardProps> = ({
             fill="none"
             stroke={theme.primary}
             strokeWidth={3}
+            strokeLinejoin="round"
           />
           {data.map((point, index) => {
-            const x = padding + (index / (data.length - 1)) * (chartWidth - padding * 2);
+            const x =
+              padding + (index / lineSpan) * (chartWidth - padding * 2);
             const y =
               chartHeight - 20 - (point.value / maxValue) * (chartHeight - 40);
             return (
@@ -103,13 +129,26 @@ export const ChartCard: React.FC<ChartCardProps> = ({
             );
           })}
         </Svg>
+        <View style={styles.labels}>
+          {data.map((point, index) => (
+            <ThemedText
+              key={index}
+              variant="caption"
+              color={theme.mutedText}
+              style={[styles.label, { width: (chartWidth - padding * 2) / data.length }]}
+              numberOfLines={1}
+            >
+              {point.label}
+            </ThemedText>
+          ))}
+        </View>
       </View>
     );
   };
 
   return (
-    <ThemedCard style={styles.card}>
-      <ThemedText variant="subtitle" style={styles.title}>
+    <ThemedCard style={[styles.card, { borderColor: theme.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: 18 }]}>
+      <ThemedText variant="subtitle" style={styles.title} color={theme.text}>
         {title}
       </ThemedText>
       {type === 'bar' ? renderBarChart() : renderLineChart()}
@@ -120,12 +159,18 @@ export const ChartCard: React.FC<ChartCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
+    paddingVertical: 4,
   },
   title: {
     marginBottom: 16,
   },
   chartContainer: {
     alignItems: 'center',
+  },
+  empty: {
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingVertical: 24,
   },
   labels: {
     flexDirection: 'row',
@@ -135,5 +180,6 @@ const styles = StyleSheet.create({
   },
   label: {
     textAlign: 'center',
+    fontSize: 11,
   },
 });

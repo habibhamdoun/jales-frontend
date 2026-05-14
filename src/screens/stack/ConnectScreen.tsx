@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { Device } from 'react-native-ble-plx';
 import { ProfileStackParamList } from '@/src/navigation/AppTabs';
 import { Screen } from '@/src/components/themed/Screen';
 import { ThemedText } from '@/src/components/themed/ThemedText';
@@ -16,13 +17,16 @@ import { ThemedButton } from '@/src/components/themed/ThemedButton';
 import { DeviceRow } from '@/src/components/DeviceRow';
 import { useTheme } from '@/src/theme/useTheme';
 import {
+  AlertCircle,
   Bluetooth,
-  BluetoothOff,
+  CheckCircle2,
   ChevronLeft,
+  Radio,
   Shirt,
   X,
 } from 'lucide-react-native';
 import { useBle } from '@/src/hooks/useBle';
+import { useMonitoring } from '@/src/monitoring/MonitoringContext';
 
 const ConnectScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -33,22 +37,27 @@ const ConnectScreen: React.FC = () => {
     devices,
     bno,
     mpu1,
+    mpu2,
     isScanning,
     isConnecting,
     errorMsg,
     isConnected,
     startScan,
-    stopScan,
     connectDevice,
     disconnectDevice,
     clearError,
   } = useBle();
 
-  const handleConnect = (dev: any) => {
+  const { isActive, stopMonitoring } = useMonitoring();
+
+  const handleConnect = (dev: Device) => {
     connectDevice(dev);
   };
 
   const handleDisconnect = async () => {
+    if (isActive) {
+      await stopMonitoring().catch(() => {});
+    }
     await disconnectDevice();
   };
 
@@ -58,189 +67,232 @@ const ConnectScreen: React.FC = () => {
 
   return (
     <Screen scrollable={false}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackToProfile}>
+      <View
+        style={[
+          styles.header,
+          { borderBottomColor: theme.border },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={handleBackToProfile}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole='button'
+          accessibilityLabel='Go back'
+        >
           <ChevronLeft color={theme.text} size={24} />
         </TouchableOpacity>
-        <ThemedText variant='subtitle'>Connect to JALES Shirt</ThemedText>
+        <View style={styles.headerTitleBlock}>
+          <ThemedText variant='subtitle' style={styles.headerTitle}>
+            Connect shirt
+          </ThemedText>
+          <ThemedText variant='caption' color={theme.mutedText}>
+            Bluetooth · PostureMonitor
+          </ThemedText>
+        </View>
         <View style={{ width: 24 }} />
       </View>
 
-      {errorMsg && (
-        <ThemedCard
-          style={[styles.errorCard, { borderLeftColor: theme.primary }]}
+      {errorMsg ? (
+        <View
+          style={[
+            styles.errorBanner,
+            {
+              backgroundColor: `${theme.danger}10`,
+              borderColor: `${theme.danger}33`,
+            },
+          ]}
         >
-          <View style={styles.errorContent}>
-            <View style={{ flex: 1 }}>
-              <ThemedText variant='caption' color={theme.primary}>
-                {errorMsg}
-              </ThemedText>
-            </View>
-            <TouchableOpacity onPress={clearError}>
-              <X color={theme.primary} size={18} />
-            </TouchableOpacity>
-          </View>
-        </ThemedCard>
-      )}
+          <AlertCircle
+            color={theme.danger}
+            size={20}
+            strokeWidth={2.4}
+          />
+          <ThemedText
+            variant='caption'
+            style={[styles.errorBannerText, { color: theme.danger }]}
+          >
+            {errorMsg}
+          </ThemedText>
+          <TouchableOpacity
+            onPress={clearError}
+            hitSlop={12}
+            accessibilityLabel='Dismiss error'
+          >
+            <X color={theme.danger} size={20} />
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       <ScrollView
-        style={{ flex: 1 }}
+        style={styles.scroll}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={styles.scrollContent}
       >
         {isConnecting ? (
-          <View style={styles.connectingContainer}>
-            <ThemedCard style={styles.connectingCard}>
-              <View style={styles.connectingHeader}>
-                <View
-                  style={[
-                    styles.connectingIcon,
-                    { backgroundColor: theme.primarySoft },
-                  ]}
-                >
-                  <ActivityIndicator color={theme.primary} size='large' />
-                </View>
-                <ThemedText variant='subtitle' style={styles.connectingText}>
-                  Connecting...
-                </ThemedText>
-                <ThemedText
-                  variant='caption'
-                  color={theme.mutedText}
-                  style={styles.connectingSubtext}
-                >
-                  Please wait while we establish connection
-                </ThemedText>
+          <View style={styles.stateCenter}>
+            <ThemedCard
+              style={[
+                styles.elevatedCard,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.connectingRing,
+                  { backgroundColor: theme.primarySoft },
+                ]}
+              >
+                <ActivityIndicator color={theme.primary} size='large' />
               </View>
+              <ThemedText
+                variant='subtitle'
+                style={styles.stateTitle}
+                color={theme.text}
+              >
+                Connecting…
+              </ThemedText>
+              <ThemedText
+                variant='caption'
+                color={theme.mutedText}
+                style={styles.stateSub}
+              >
+                Pairing with your shirt. Keep it close and powered on.
+              </ThemedText>
             </ThemedCard>
           </View>
         ) : isConnected && device ? (
-          <View style={styles.connectedContainer}>
-            <ThemedCard style={styles.connectedCard}>
-              <View style={styles.connectedHeader}>
-                <View
-                  style={[
-                    styles.bluetoothIcon,
-                    { backgroundColor: theme.primarySoft },
-                  ]}
+          <View style={styles.connectedWrap}>
+            <ThemedCard
+              style={[
+                styles.elevatedCard,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.successPill,
+                  { backgroundColor: `${theme.success}18` },
+                ]}
+              >
+                <CheckCircle2
+                  color={theme.success}
+                  size={18}
+                  strokeWidth={2.5}
+                />
+                <ThemedText
+                  variant='caption'
+                  style={[styles.successPillText, { color: theme.success }]}
                 >
-                  <Bluetooth color={theme.primary} size={28} />
-                </View>
-                <ThemedText variant='subtitle'>Connected</ThemedText>
+                  Connected
+                </ThemedText>
+              </View>
+
+              <View
+                style={[
+                  styles.connectedIconWrap,
+                  { backgroundColor: theme.primarySoft },
+                ]}
+              >
+                <Bluetooth color={theme.primary} size={32} strokeWidth={2.2} />
               </View>
 
               <ThemedText
-                variant='body'
-                color={theme.mutedText}
-                style={styles.deviceName}
+                variant='subtitle'
+                style={styles.deviceTitle}
+                color={theme.text}
               >
-                {device.name || device.localName || 'Unknown Device'}
+                {device.name || device.localName || 'JALES Shirt'}
+              </ThemedText>
+              <ThemedText
+                variant='caption'
+                color={theme.mutedText}
+                style={styles.deviceId}
+                numberOfLines={1}
+              >
+                {device.id}
               </ThemedText>
 
-              <View style={styles.deviceDetails}>
-                <View style={styles.detailRow}>
-                  <ThemedText variant='caption' color={theme.mutedText}>
-                    Device ID
-                  </ThemedText>
+              <View
+                style={[
+                  styles.telemetryPanel,
+                  { backgroundColor: theme.primarySoft },
+                ]}
+              >
+                <View style={styles.telemetryHeader}>
+                  <Radio
+                    color={theme.primary}
+                    size={16}
+                    strokeWidth={2.4}
+                  />
                   <ThemedText
                     variant='caption'
-                    style={styles.detailValue}
-                    numberOfLines={1}
+                    style={[styles.telemetryLabel, { color: theme.primary }]}
                   >
-                    {device.id}
+                    Live sensor preview
                   </ThemedText>
                 </View>
 
                 {bno ? (
-                  <>
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Heading
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {bno.heading.toFixed(2)}°
-                      </ThemedText>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Pitch
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {bno.pitch.toFixed(2)}°
-                      </ThemedText>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Roll
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {bno.roll.toFixed(2)}°
-                      </ThemedText>
-                    </View>
-                  </>
+                  <View style={styles.bnoGrid}>
+                    {(
+                      [
+                        ['Heading', `${bno.heading.toFixed(1)}°`],
+                        ['Pitch', `${bno.pitch.toFixed(1)}°`],
+                        ['Roll', `${bno.roll.toFixed(1)}°`],
+                      ] as const
+                    ).map(([k, v]) => (
+                      <View key={k} style={styles.metricCell}>
+                        <ThemedText variant='caption' color={theme.mutedText}>
+                          {k}
+                        </ThemedText>
+                        <ThemedText
+                          variant='label'
+                          style={styles.metricValue}
+                          color={theme.text}
+                        >
+                          {v}
+                        </ThemedText>
+                      </View>
+                    ))}
+                  </View>
                 ) : (
-                  <View style={styles.detailRow}>
+                  <View style={styles.waitingRow}>
+                    <ActivityIndicator size='small' color={theme.primary} />
                     <ThemedText variant='caption' color={theme.mutedText}>
-                      Status
-                    </ThemedText>
-                    <ThemedText variant='caption' style={styles.detailValue}>
-                      Waiting for data...
+                      Waiting for BNO stream…
                     </ThemedText>
                   </View>
                 )}
 
-                {mpu1 && (
-                  <>
-                    <View style={styles.sectionDivider} />
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Accel X
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {mpu1.ax.toFixed(1)}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Accel Y
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {mpu1.ay.toFixed(1)}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Accel Z
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {mpu1.az.toFixed(1)}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Gyro X
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {mpu1.gx.toFixed(1)}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Gyro Y
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {mpu1.gy.toFixed(1)}
-                      </ThemedText>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <ThemedText variant='caption' color={theme.mutedText}>
-                        Gyro Z
-                      </ThemedText>
-                      <ThemedText variant='caption' style={styles.detailValue}>
-                        {mpu1.gz.toFixed(1)}
-                      </ThemedText>
-                    </View>
-                  </>
-                )}
+                {mpu1 ? (
+                  <View style={styles.mpuBlock}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      MPU1 accel
+                    </ThemedText>
+                    <ThemedText variant='caption' style={styles.mpuLine} color={theme.text}>
+                      X {mpu1.ax.toFixed(0)} · Y {mpu1.ay.toFixed(0)} · Z{' '}
+                      {mpu1.az.toFixed(0)}
+                    </ThemedText>
+                  </View>
+                ) : null}
+
+                {mpu2 ? (
+                  <View style={styles.mpuBlock}>
+                    <ThemedText variant='caption' color={theme.mutedText}>
+                      MPU2 accel
+                    </ThemedText>
+                    <ThemedText variant='caption' style={styles.mpuLine} color={theme.text}>
+                      X {mpu2.ax.toFixed(0)} · Y {mpu2.ay.toFixed(0)} · Z{' '}
+                      {mpu2.az.toFixed(0)}
+                    </ThemedText>
+                  </View>
+                ) : null}
               </View>
 
               <ThemedButton
@@ -253,50 +305,74 @@ const ConnectScreen: React.FC = () => {
             </ThemedCard>
           </View>
         ) : (
-          <View style={styles.scanContainer}>
-            <View style={styles.scanningSection}>
+          <View style={styles.scanFlow}>
+            <ThemedCard
+              style={[
+                styles.heroCard,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
               <View
                 style={[
-                  styles.scanningIcon,
+                  styles.scanHeroIcon,
                   { backgroundColor: theme.primarySoft },
                 ]}
               >
                 {isScanning ? (
                   <ActivityIndicator color={theme.primary} size='large' />
                 ) : (
-                  <Bluetooth color={theme.primary} size={36} />
+                  <Bluetooth color={theme.primary} size={40} strokeWidth={2} />
                 )}
               </View>
-
-              <ThemedText variant='subtitle' style={styles.scanningText}>
-                {isScanning ? 'Scanning for devices...' : 'Ready to scan'}
+              <ThemedText
+                variant='subtitle'
+                style={styles.heroTitle}
+                color={theme.text}
+              >
+                {isScanning ? 'Searching nearby…' : 'Pair your shirt'}
               </ThemedText>
-
-              {!isScanning && !isConnected && devices.length === 0 && (
+              <ThemedText
+                variant='caption'
+                color={theme.mutedText}
+                style={styles.heroSub}
+              >
+                {isScanning
+                  ? 'Looking for devices named PostureMonitor. This takes a few seconds.'
+                  : 'Turn the shirt on, keep it within range, then scan. Choose your device from the list when it appears.'}
+              </ThemedText>
+              {!isScanning ? (
                 <ThemedButton
-                  title='Start Scan'
+                  title={
+                    devices.length > 0 ? 'Scan again' : 'Scan for shirt'
+                  }
                   variant='primary'
-                  size='md'
+                  size='lg'
                   onPress={startScan}
-                  style={{ marginTop: 24 }}
+                  style={styles.heroButton}
                 />
-              )}
-            </View>
+              ) : null}
+            </ThemedCard>
 
-            {devices.length > 0 && !isScanning && (
-              <View style={styles.devicesSection}>
+            {devices.length > 0 ? (
+              <View style={styles.listSection}>
                 <ThemedText
                   variant='label'
-                  color={theme.mutedText}
-                  style={styles.devicesTitle}
+                  color={theme.text}
+                  style={styles.listHeading}
                 >
-                  Found Devices ({devices.length})
+                  Found {devices.length}{' '}
+                  {devices.length === 1 ? 'device' : 'devices'}
                 </ThemedText>
-
+                <ThemedText variant='caption' color={theme.mutedText} style={styles.listHint}>
+                  Tap Connect on your JALES shirt.
+                </ThemedText>
                 {devices.map((d) => (
                   <DeviceRow
                     key={d.id}
-                    name={d.name || d.localName || 'Unknown Device'}
+                    name={d.name || d.localName || 'PostureMonitor'}
                     subtitle={d.id}
                     icon={<Shirt color={theme.primary} size={24} />}
                     onPress={() => handleConnect(d)}
@@ -304,41 +380,46 @@ const ConnectScreen: React.FC = () => {
                   />
                 ))}
               </View>
-            )}
+            ) : null}
 
-            {!isScanning && devices.length === 0 && (
-              <ThemedCard style={styles.noDevicesCard}>
-                <View
-                  style={[
-                    styles.noDevicesIcon,
-                    { backgroundColor: theme.border },
-                  ]}
-                >
-                  <BluetoothOff color={theme.mutedText} size={36} />
-                </View>
-
-                <ThemedText variant='subtitle' style={styles.noDevicesTitle}>
-                  No devices found
-                </ThemedText>
-
+            {!isScanning && devices.length === 0 ? (
+              <View
+                style={[
+                  styles.tipsPanel,
+                  {
+                    backgroundColor: theme.primarySoft,
+                    borderColor: `${theme.primary}28`,
+                  },
+                ]}
+              >
                 <ThemedText
-                  variant='body'
-                  color={theme.mutedText}
-                  style={styles.noDevicesText}
+                  variant='label'
+                  style={[styles.tipsTitle, { color: theme.primary }]}
                 >
-                  Make sure your Arduino is powered on, nearby, and advertising
-                  over BLE.
+                  Not seeing it?
                 </ThemedText>
-
-                <ThemedButton
-                  title='Retry Scan'
-                  variant='secondary'
-                  size='md'
-                  onPress={startScan}
-                  style={styles.retryButton}
-                />
-              </ThemedCard>
-            )}
+                <View style={styles.tipRow}>
+                  <View style={[styles.tipDot, { backgroundColor: theme.primary }]} />
+                  <ThemedText variant='caption' color={theme.mutedText} style={styles.tipText}>
+                    Bluetooth is on and the app has location / nearby devices
+                    permission.
+                  </ThemedText>
+                </View>
+                <View style={styles.tipRow}>
+                  <View style={[styles.tipDot, { backgroundColor: theme.primary }]} />
+                  <ThemedText variant='caption' color={theme.mutedText} style={styles.tipText}>
+                    Shirt battery is charged and firmware is advertising as
+                    PostureMonitor.
+                  </ThemedText>
+                </View>
+                <View style={styles.tipRow}>
+                  <View style={[styles.tipDot, { backgroundColor: theme.primary }]} />
+                  <ThemedText variant='caption' color={theme.mutedText} style={styles.tipText}>
+                    Move a little closer and try Scan again.
+                  </ThemedText>
+                </View>
+              </View>
+            ) : null}
           </View>
         )}
 
@@ -353,148 +434,242 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  errorCard: {
+  headerTitleBlock: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  errorBanner: {
     marginHorizontal: 16,
     marginTop: 12,
-    borderLeftWidth: 4,
-    backgroundColor: 'rgba(255, 0, 0, 0.03)',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  errorContent: {
+  errorBannerText: {
+    flex: 1,
+    lineHeight: 19,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  elevatedCard: {
+    borderRadius: 20,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  stateCenter: {
+    flex: 1,
+    minHeight: 320,
+    justifyContent: 'center',
+  },
+  connectingRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  stateTitle: {
+    textAlign: 'center',
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  stateSub: {
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
+  connectedWrap: {
+    paddingBottom: 8,
+  },
+  successPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 16,
   },
-  scanContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
+  successPillText: {
+    fontWeight: '700',
+    fontSize: 12,
   },
-  connectedContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-  },
-  connectingContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-  },
-  connectingCard: {
-    paddingVertical: 32,
-  },
-  connectingHeader: {
+  connectedIconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 14,
   },
-  connectingIcon: {
+  deviceTitle: {
+    textAlign: 'center',
+    fontWeight: '800',
+    fontSize: 20,
+    letterSpacing: -0.3,
+  },
+  deviceId: {
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 18,
+    opacity: 0.85,
+  },
+  telemetryPanel: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 8,
+  },
+  telemetryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  telemetryLabel: {
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontSize: 11,
+  },
+  bnoGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  metricCell: {
+    flex: 1,
+    minWidth: 0,
+  },
+  metricValue: {
+    marginTop: 4,
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  waitingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  mpuBlock: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  mpuLine: {
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  disconnectButton: {
+    marginTop: 18,
+  },
+  scanFlow: {
+    gap: 16,
+  },
+  heroCard: {
+    borderRadius: 20,
+    paddingVertical: 28,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  scanHeroIcon: {
     width: 100,
     height: 100,
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
-  connectingText: {
+  heroTitle: {
+    textAlign: 'center',
+    fontWeight: '800',
+    fontSize: 22,
+    letterSpacing: -0.4,
     marginBottom: 8,
   },
-  connectingSubtext: {
+  heroSub: {
     textAlign: 'center',
+    lineHeight: 21,
+    fontSize: 14,
+    marginBottom: 22,
+    maxWidth: 320,
   },
-  scanningSection: {
-    alignItems: 'center',
-    marginVertical: 48,
+  heroButton: {
+    alignSelf: 'stretch',
   },
-  scanningIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
+  listSection: {
+    marginTop: 4,
   },
-  scanningText: {
-    textAlign: 'center',
-    marginBottom: 8,
+  listHeading: {
+    fontWeight: '800',
+    marginBottom: 4,
   },
-  devicesSection: {
-    marginTop: 32,
+  listHint: {
+    marginBottom: 12,
+    lineHeight: 18,
   },
-  devicesTitle: {
+  tipsPanel: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: 4,
+  },
+  tipsTitle: {
+    fontWeight: '800',
     marginBottom: 12,
   },
-  noDevicesCard: {
-    alignItems: 'center',
-    marginTop: 48,
-    paddingVertical: 32,
-  },
-  noDevicesIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  noDevicesTitle: {
-    marginBottom: 8,
-  },
-  noDevicesText: {
-    textAlign: 'center',
-    marginBottom: 24,
-    marginHorizontal: 16,
-  },
-  retryButton: {
-    alignSelf: 'center',
-  },
-  connectedCard: {
-    paddingVertical: 24,
-  },
-  connectedHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  bluetoothIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  deviceName: {
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  deviceDetails: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  detailRow: {
+  tipRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 12,
-    paddingHorizontal: 0,
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 10,
   },
-  detailValue: {
+  tipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 6,
+    flexShrink: 0,
+  },
+  tipText: {
     flex: 1,
-    textAlign: 'right',
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    marginVertical: 8,
-  },
-  disconnectButton: {
-    marginTop: 16,
+    lineHeight: 19,
+    fontSize: 13,
   },
   spacer: {
-    height: 32,
+    height: 40,
   },
 });
 

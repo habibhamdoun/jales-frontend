@@ -28,8 +28,7 @@ export type RegisterPayload = {
   age?: number | null;
   height_cm?: number | null;
   weight_kg?: number | null;
-  // Optional initial thresholds; backend defaults are 30 / 25 / 20
-  neck_threshold?: number;
+  // Optional initial thresholds; backend defaults apply for omitted fields
   upper_back_threshold?: number;
   shoulder_threshold?: number;
 };

@@ -61,20 +61,29 @@ const buildConversationInput = (messages: ChatMessage[], userText: string) => {
   ];
 };
 
+const unwrapChatPayload = (raw: unknown): Record<string, unknown> => {
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  const nested = obj.data;
+  if (nested && typeof nested === 'object' && !Array.isArray(nested))
+    return nested as Record<string, unknown>;
+  return obj;
+};
+
+const replyFromChatJson = (raw: unknown): string | null => {
+  const root = unwrapChatPayload(raw);
+  const reply = root.reply ?? root.text;
+  if (typeof reply === 'string' && reply.trim()) return reply.trim();
+  const fromOpenAi = getResponseText(raw as OpenAIResponse);
+  return fromOpenAi && fromOpenAi !== 'I could not generate a response. Please try again.'
+    ? fromOpenAi
+    : null;
+};
+
 export const sendChatMessage = async (
   messages: ChatMessage[],
   userText: string,
 ): Promise<string> => {
-  // Preferred: use your backend (one global base URL).
-  if (API_BASE_URL) {
-    const { data } = await apiFetch<any>('/chat', {
-      method: 'POST',
-      body: { messages, message: userText },
-    });
-    return data?.reply || data?.text || getResponseText(data);
-  }
-
-  // Back-compat: allow an explicit chat url override.
+  // 1) Dedicated chat URL (full URL override).
   if (CHAT_API_URL) {
     const response = await fetch(CHAT_API_URL, {
       method: 'POST',
@@ -88,33 +97,48 @@ export const sendChatMessage = async (
       throw new Error(data?.error || 'Chat request failed');
     }
 
-    return data.reply || data.text || getResponseText(data);
+    const r = replyFromChatJson(data);
+    if (r) return r;
   }
 
-  if (!OPENAI_API_KEY) {
+  // 2) Direct OpenAI when key is set (works even if API_BASE_URL has no /chat route).
+  if (OPENAI_API_KEY) {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        input: buildConversationInput(messages, userText),
+        max_output_tokens: 800,
+      }),
+    });
+
+    const data = (await response.json()) as OpenAIResponse;
+
+    if (!response.ok) {
+      throw new Error(data.error?.message || 'OpenAI request failed');
+    }
+
+    return getResponseText(data);
+  }
+
+  // 3) Same-origin backend proxy: POST {API_BASE_URL}/chat
+  if (API_BASE_URL) {
+    const { data } = await apiFetch<unknown>('/chat', {
+      method: 'POST',
+      body: { messages, message: userText },
+    });
+    const r = replyFromChatJson(data);
+    if (r) return r;
     throw new Error(
-      'Missing chat API setup. Set EXPO_PUBLIC_API_BASE_URL (recommended) or EXPO_PUBLIC_JALES_CHAT_API_URL or EXPO_PUBLIC_OPENAI_API_KEY.',
+      'Chat response from server had no reply text. Expected JSON with `reply` or `text`.',
     );
   }
 
-  const response = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      input: buildConversationInput(messages, userText),
-      max_output_tokens: 450,
-    }),
-  });
-
-  const data = (await response.json()) as OpenAIResponse;
-
-  if (!response.ok) {
-    throw new Error(data.error?.message || 'OpenAI request failed');
-  }
-
-  return getResponseText(data);
+  throw new Error(
+    'Missing chat API setup. Set EXPO_PUBLIC_OPENAI_API_KEY, or EXPO_PUBLIC_API_BASE_URL with a POST /chat route, or EXPO_PUBLIC_JALES_CHAT_API_URL.',
+  );
 };

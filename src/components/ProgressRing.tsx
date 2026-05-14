@@ -21,16 +21,16 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({
 }) => {
   const { theme } = useTheme();
 
-  // Determine ring color based on status
+  // Match Home posture orb: teal (good), amber (warn), red (bad).
   const getStatusColor = (stat: string): string => {
     switch (stat.toUpperCase()) {
       case 'GOOD':
-        return theme.primary; // Main app color
+        return theme.primary;
       case 'WARNING':
-        return '#FFC107'; // Yellow/Amber
+        return theme.warning;
       case 'DANGER':
       case 'BAD':
-        return '#F44336'; // Red
+        return theme.danger;
       default:
         return theme.primary;
     }

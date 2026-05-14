@@ -131,7 +131,6 @@ const healthProblemOptions: SelectOption[] = [
   { label: 'Lordosis', value: 'lordosis' },
   { label: 'Forward head posture', value: 'forward_head_posture' },
   { label: 'Rounded shoulders', value: 'rounded_shoulders' },
-  { label: 'Chronic neck pain', value: 'chronic_neck_pain' },
   { label: 'Chronic back pain', value: 'chronic_back_pain' },
   { label: 'Shoulder pain', value: 'shoulder_pain' },
   { label: 'Previous spine injuries', value: 'previous_spine_injuries' },
@@ -296,7 +295,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   const [weightKg, setWeightKg] = useState('');
 
   const [shoulderWidthCm, setShoulderWidthCm] = useState('');
-  const [neckLengthCm, setNeckLengthCm] = useState('');
   const [torsoLengthCm, setTorsoLengthCm] = useState('');
   const [armLengthCm, setArmLengthCm] = useState('');
   const [bodyType, setBodyType] = useState('average');
@@ -317,7 +315,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 
   const [neutralPostureCalibration, setNeutralPostureCalibration] =
     useState('');
-  const [maximumNeckFlexion, setMaximumNeckFlexion] = useState('');
   const [comfortableSittingAngle, setComfortableSittingAngle] = useState('');
   const [comfortableStandingAngle, setComfortableStandingAngle] = useState('');
   const [personalizedSafeThresholds, setPersonalizedSafeThresholds] =
@@ -506,14 +503,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                 keyboardType='decimal-pad'
                 style={styles.rowInput}
               />
-              <ThemedInput
-                label={optionalLabel('Neck length (cm)')}
-                placeholder='Optional'
-                value={neckLengthCm}
-                onChangeText={setNeckLengthCm}
-                keyboardType='decimal-pad'
-                style={styles.rowInput}
-              />
             </View>
             <View style={styles.row}>
               <ThemedInput
@@ -653,14 +642,6 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
             />
             <View style={styles.row}>
               <ThemedInput
-                label='Maximum neck flexion'
-                placeholder='Degrees'
-                value={maximumNeckFlexion}
-                onChangeText={setMaximumNeckFlexion}
-                keyboardType='decimal-pad'
-                style={styles.rowInput}
-              />
-              <ThemedInput
                 label='Comfortable sitting angle'
                 placeholder='Degrees'
                 value={comfortableSittingAngle}
@@ -668,14 +649,15 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
                 keyboardType='decimal-pad'
                 style={styles.rowInput}
               />
+              <ThemedInput
+                label='Comfortable standing angle'
+                placeholder='Degrees'
+                value={comfortableStandingAngle}
+                onChangeText={setComfortableStandingAngle}
+                keyboardType='decimal-pad'
+                style={styles.rowInput}
+              />
             </View>
-            <ThemedInput
-              label='Comfortable standing angle'
-              placeholder='Degrees'
-              value={comfortableStandingAngle}
-              onChangeText={setComfortableStandingAngle}
-              keyboardType='decimal-pad'
-            />
             <ThemedInput
               label='Personalized safe thresholds'
               placeholder='Describe or enter threshold notes'

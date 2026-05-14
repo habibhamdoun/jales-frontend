@@ -24,7 +24,6 @@ export const mockPostureData: PostureData = {
   currentScore: 85,
   status: 'GOOD',
   angles: {
-    neck: 12,
     upperBack: 8,
     shoulders: 5,
   },
@@ -46,7 +45,7 @@ export const mockDailySummary: DailySummary = {
     { time: '3 PM', status: 'bad' },
     { time: '6 PM', status: 'good' },
   ],
-  postureTip: 'Try the "Chin Tuck" exercise to relieve neck strain. It helps align your head over your spine.',
+  postureTip: 'Try gentle shoulder rolls and upper-back stretches during breaks to stay loose.',
 };
 
 export const mockWeeklySummary: WeeklySummary = {
@@ -109,7 +108,7 @@ export const mockSettings: Settings = {
   vibrationIntensity: 70,
   sensitivity: 60,
   reminderFrequency: 'Medium',
-  neckSensitivity: 'Default',
+  postureSensitivity: 'Default',
   shoulderCorrectionThreshold: 'Medium',
   upperBackCorrectionThreshold: 'High',
   vibrationAlerts: true,
@@ -119,9 +118,9 @@ export const mockSettings: Settings = {
 };
 
 export const mockPostureTips = [
-  'Try the "Chin Tuck" exercise to relieve neck strain. It helps align your head over your spine.',
+  'Try gentle shoulder rolls and upper-back stretches during breaks to stay loose.',
   'Take a 5-minute break every hour to stand and stretch your back.',
-  'Position your monitor at eye level to reduce neck strain.',
+  'Position your monitor at eye level to support a neutral head position.',
   'Keep your shoulders relaxed and avoid hunching forward.',
   'Strengthen your core muscles to support better posture throughout the day.',
 ];

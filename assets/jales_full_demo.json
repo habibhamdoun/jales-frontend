@@ -1,0 +1,564 @@
+{
+  "_readme": "Full JALES API demo playbook. Paths are relative to your API base URL with NO /api prefix (e.g. POST {BASE}/auth/login). Run steps in order; substitute <AUTH_TOKEN>, <USER_ID>, <DEVICE_ID>, <SESSION_ID> from responses. Prerequisites: backend reachable, CORS if testing from web, same user/device MAC as in steps if your DB enforces uniqueness. Optional: use assets/jales_mock_sensor_data.json as reading payloads in your own scripts; this file documents HTTP steps for Postman/curl.",
+
+  "step_01_register": {
+    "description": "Register a new user",
+    "method": "POST",
+    "endpoint": "/auth/register",
+    "body": {
+      "name": "Mohammad Tester",
+      "email": "mohammad@jales.test",
+      "password": "Test1234!",
+      "age": 22,
+      "gender": "male",
+      "job_title": "Software Engineering Student"
+    },
+    "expectedStatus": 201,
+    "expectedResponse": {
+      "token": "<save this as AUTH_TOKEN>",
+      "user": {
+        "id": "<save this as USER_ID>",
+        "name": "Mohammad Tester",
+        "email": "mohammad@jales.test"
+      }
+    }
+  },
+
+  "step_02_login": {
+    "description": "Login with the same user — use this token for all subsequent requests",
+    "method": "POST",
+    "endpoint": "/auth/login",
+    "body": {
+      "email": "mohammad@jales.test",
+      "password": "Test1234!"
+    },
+    "expectedStatus": 200,
+    "expectedResponse": {
+      "token": "<save this as AUTH_TOKEN>",
+      "user": { "id": "<USER_ID>", "name": "Mohammad Tester" }
+    }
+  },
+
+  "step_03_set_thresholds": {
+    "description": "Set user posture thresholds — customize RULA sensitivity per user",
+    "method": "POST",
+    "endpoint": "/thresholds",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "body": {
+      "neck_threshold": 20,
+      "trunk_threshold": 30,
+      "shoulder_threshold": 45,
+      "alert_delay_seconds": 15
+    },
+    "expectedStatus": 201
+  },
+
+  "step_04_register_device": {
+    "description": "Register the JALES smart shirt BLE device",
+    "method": "POST",
+    "endpoint": "/devices/register",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "body": {
+      "mac_address": "AA:BB:CC:DD:EE:FF",
+      "device_name": "JALES Shirt v1"
+    },
+    "expectedStatus": 201,
+    "expectedResponse": {
+      "id": "<save this as DEVICE_ID>",
+      "mac_address": "AA:BB:CC:DD:EE:FF",
+      "device_name": "JALES Shirt v1"
+    }
+  },
+
+  "step_05_start_session": {
+    "description": "Start a posture monitoring session",
+    "method": "POST",
+    "endpoint": "/sessions/start",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "body": {
+      "device_id": "<DEVICE_ID>"
+    },
+    "expectedStatus": 201,
+    "expectedResponse": {
+      "session_id": "<save this as SESSION_ID>",
+      "start_time": "<timestamp>"
+    }
+  },
+
+  "step_06_posture_readings": {
+    "description": "Send 16 posture readings — one per mock scenario. Each reading is a real sensor payload that the backend scores via RULA.",
+    "method": "POST",
+    "endpoint": "/readings",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "body": {
+      "session_id": "<SESSION_ID>",
+      "device_id": "<DEVICE_ID>",
+      "readings": [
+        {
+          "scenario": "01 — Perfect posture",
+          "bno": { "heading": 0.00, "roll": 0.50, "pitch": 3.00 },
+          "mpu1": { "Ax": -14500, "Ay": 200,   "Az": -5300, "Gx": 5,   "Gy": -2,  "Gz": -1 },
+          "mpu2": { "Ax": -8500,  "Ay": 300,   "Az": 9700,  "Gx": -3,  "Gy": -1,  "Gz": 2  },
+          "recorded_at": "2026-05-11T08:00:00Z",
+          "expectedActionLevel": 1, "expectedAlert": false, "expectedVibration": false
+        },
+        {
+          "scenario": "02 — Slight neck tilt",
+          "bno": { "heading": 1.20, "roll": 0.80, "pitch": 15.00 },
+          "mpu1": { "Ax": -14500, "Ay": 250,   "Az": -5300, "Gx": 8,   "Gy": -3,  "Gz": -2 },
+          "mpu2": { "Ax": -8500,  "Ay": 350,   "Az": 9700,  "Gx": -4,  "Gy": -2,  "Gz": 3  },
+          "recorded_at": "2026-05-11T08:01:00Z",
+          "expectedActionLevel": 2, "expectedAlert": false, "expectedVibration": false
+        },
+        {
+          "scenario": "03 — Forward neck >20deg",
+          "bno": { "heading": 2.10, "roll": 1.00, "pitch": 25.00 },
+          "mpu1": { "Ax": -14500, "Ay": 300,   "Az": -5300, "Gx": 10,  "Gy": -4,  "Gz": -2 },
+          "mpu2": { "Ax": -8500,  "Ay": 400,   "Az": 9700,  "Gx": -5,  "Gy": -2,  "Gz": 3  },
+          "recorded_at": "2026-05-11T08:02:00Z",
+          "expectedActionLevel": 3, "expectedAlert": true, "expectedVibration": false
+        },
+        {
+          "scenario": "04 — Severe forward hunch",
+          "bno": { "heading": 3.50, "roll": 2.00, "pitch": 68.00 },
+          "mpu1": { "Ax": -14500, "Ay": 500,   "Az": -5300, "Gx": 15,  "Gy": -5,  "Gz": -3 },
+          "mpu2": { "Ax": -8500,  "Ay": 600,   "Az": 9700,  "Gx": -7,  "Gy": -3,  "Gz": 4  },
+          "recorded_at": "2026-05-11T08:03:00Z",
+          "expectedActionLevel": 4, "expectedAlert": true, "expectedVibration": true
+        },
+        {
+          "scenario": "05 — Left shoulder elevated",
+          "bno": { "heading": 1.00, "roll": 0.60, "pitch": 5.00 },
+          "mpu1": { "Ax": -14500, "Ay": 8000,  "Az": -5300, "Gx": 12,  "Gy": -6,  "Gz": -2 },
+          "mpu2": { "Ax": -8500,  "Ay": 400,   "Az": 9700,  "Gx": -4,  "Gy": -2,  "Gz": 3  },
+          "recorded_at": "2026-05-11T08:04:00Z",
+          "expectedActionLevel": 3, "expectedAlert": true, "expectedVibration": false
+        },
+        {
+          "scenario": "06 — Right shoulder elevated",
+          "bno": { "heading": 1.00, "roll": 0.60, "pitch": 5.00 },
+          "mpu1": { "Ax": -14500, "Ay": 300,   "Az": -5300, "Gx": 5,   "Gy": -2,  "Gz": -1 },
+          "mpu2": { "Ax": -8500,  "Ay": 9800,  "Az": 9680,  "Gx": -120,"Gy": -24, "Gz": 131},
+          "recorded_at": "2026-05-11T08:05:00Z",
+          "expectedActionLevel": 3, "expectedAlert": true, "expectedVibration": false
+        },
+        {
+          "scenario": "07 — Both shoulders raised >90deg",
+          "bno": { "heading": 2.00, "roll": 1.00, "pitch": 10.00 },
+          "mpu1": { "Ax": -14500, "Ay": 13000, "Az": -5300, "Gx": 20,  "Gy": -8,  "Gz": -4 },
+          "mpu2": { "Ax": -8500,  "Ay": 12500, "Az": 9680,  "Gx": -15, "Gy": -6,  "Gz": 5  },
+          "recorded_at": "2026-05-11T08:06:00Z",
+          "expectedActionLevel": 4, "expectedAlert": true, "expectedVibration": true
+        },
+        {
+          "scenario": "08 — Trunk lateral tilt",
+          "bno": { "heading": 1.00, "roll": 14.00, "pitch": 8.00 },
+          "mpu1": { "Ax": -14500, "Ay": 250,   "Az": -5300, "Gx": 8,   "Gy": -3,  "Gz": -2 },
+          "mpu2": { "Ax": -8500,  "Ay": 350,   "Az": 9700,  "Gx": -4,  "Gy": -2,  "Gz": 3  },
+          "recorded_at": "2026-05-11T08:07:00Z",
+          "expectedActionLevel": 3, "expectedAlert": true, "expectedVibration": false
+        },
+        {
+          "scenario": "09 — Trunk twist",
+          "bno": { "heading": 22.00, "roll": 1.00, "pitch": 6.00 },
+          "mpu1": { "Ax": -14500, "Ay": 250,   "Az": -5300, "Gx": 8,   "Gy": -3,  "Gz": -2 },
+          "mpu2": { "Ax": -8500,  "Ay": 350,   "Az": 9700,  "Gx": -4,  "Gy": -2,  "Gz": 3  },
+          "recorded_at": "2026-05-11T08:08:00Z",
+          "expectedActionLevel": 3, "expectedAlert": true, "expectedVibration": false
+        },
+        {
+          "scenario": "10 — Worst case everything bad",
+          "bno": { "heading": 30.00, "roll": 18.00, "pitch": 72.00 },
+          "mpu1": { "Ax": -14500, "Ay": 13000, "Az": -5300, "Gx": 25,  "Gy": -10, "Gz": -5 },
+          "mpu2": { "Ax": -8500,  "Ay": 12800, "Az": 9680,  "Gx": -20, "Gy": -8,  "Gz": 6  },
+          "recorded_at": "2026-05-11T08:09:00Z",
+          "expectedActionLevel": 4, "expectedAlert": true, "expectedVibration": true
+        },
+        {
+          "scenario": "11 — Neck extension looking up",
+          "bno": { "heading": 0.50, "roll": 0.50, "pitch": -12.00 },
+          "mpu1": { "Ax": -14500, "Ay": 200,   "Az": -5300, "Gx": 5,   "Gy": -2,  "Gz": -1 },
+          "mpu2": { "Ax": -8500,  "Ay": 300,   "Az": 9700,  "Gx": -3,  "Gy": -1,  "Gz": 2  },
+          "recorded_at": "2026-05-11T08:10:00Z",
+          "expectedActionLevel": 4, "expectedAlert": true, "expectedVibration": true
+        },
+        {
+          "scenario": "12 — Recovery after bad posture",
+          "bno": { "heading": 0.30, "roll": 0.40, "pitch": 4.00 },
+          "mpu1": { "Ax": -14500, "Ay": 180,   "Az": -5300, "Gx": 3,   "Gy": -1,  "Gz": -1 },
+          "mpu2": { "Ax": -8500,  "Ay": 220,   "Az": 9700,  "Gx": -2,  "Gy": -1,  "Gz": 1  },
+          "recorded_at": "2026-05-11T08:11:00Z",
+          "expectedActionLevel": 1, "expectedAlert": false, "expectedVibration": false
+        },
+        {
+          "scenario": "13 — Sensor noise jitter",
+          "bno": { "heading": 0.12, "roll": 0.23, "pitch": 2.80 },
+          "mpu1": { "Ax": -14501, "Ay": 190,   "Az": -5298, "Gx": 2,   "Gy": -1,  "Gz": 0  },
+          "mpu2": { "Ax": -8498,  "Ay": 280,   "Az": 9702,  "Gx": -1,  "Gy": 0,   "Gz": 1  },
+          "recorded_at": "2026-05-11T08:12:00Z",
+          "expectedActionLevel": 1, "expectedAlert": false, "expectedVibration": false
+        },
+        {
+          "scenario": "14 — Good posture maintained",
+          "bno": { "heading": 0.20, "roll": 0.30, "pitch": 3.50 },
+          "mpu1": { "Ax": -14500, "Ay": 190,   "Az": -5300, "Gx": 4,   "Gy": -1,  "Gz": -1 },
+          "mpu2": { "Ax": -8500,  "Ay": 240,   "Az": 9700,  "Gx": -2,  "Gy": -1,  "Gz": 1  },
+          "recorded_at": "2026-05-11T08:13:00Z",
+          "expectedActionLevel": 1, "expectedAlert": false, "expectedVibration": false
+        },
+        {
+          "scenario": "15 — Moderate hunch sustained",
+          "bno": { "heading": 2.00, "roll": 1.20, "pitch": 35.00 },
+          "mpu1": { "Ax": -14500, "Ay": 400,   "Az": -5300, "Gx": 11,  "Gy": -4,  "Gz": -2 },
+          "mpu2": { "Ax": -8500,  "Ay": 450,   "Az": 9700,  "Gx": -6,  "Gy": -2,  "Gz": 3  },
+          "recorded_at": "2026-05-11T08:14:00Z",
+          "expectedActionLevel": 3, "expectedAlert": true, "expectedVibration": false
+        },
+        {
+          "scenario": "16 — Final perfect reading",
+          "bno": { "heading": 0.10, "roll": 0.20, "pitch": 2.50 },
+          "mpu1": { "Ax": -14500, "Ay": 170,   "Az": -5300, "Gx": 2,   "Gy": -1,  "Gz": 0  },
+          "mpu2": { "Ax": -8500,  "Ay": 200,   "Az": 9700,  "Gx": -1,  "Gy": 0,   "Gz": 1  },
+          "recorded_at": "2026-05-11T08:15:00Z",
+          "expectedActionLevel": 1, "expectedAlert": false, "expectedVibration": false
+        }
+      ]
+    }
+  },
+
+  "step_07_log_alerts": {
+    "description": "Log the alerts that were triggered during the session — one per scenario that had expectedAlert: true",
+    "method": "POST",
+    "endpoint": "/alerts",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "alerts_to_send": [
+      {
+        "label": "Alert from scenario 03 — forward neck",
+        "body": {
+          "device_id": "<DEVICE_ID>",
+          "session_id": "<SESSION_ID>",
+          "neck_angle": 25.0,
+          "upper_back_angle": 25.0,
+          "left_shoulder_angle": 3.0,
+          "right_shoulder_angle": 2.0,
+          "action_level": 3,
+          "worst_body_part": "neck",
+          "deviation_severity": "moderate",
+          "triggered_at": "2026-05-11T08:02:15Z"
+        }
+      },
+      {
+        "label": "Alert from scenario 04 — severe hunch + vibration",
+        "body": {
+          "device_id": "<DEVICE_ID>",
+          "session_id": "<SESSION_ID>",
+          "neck_angle": 68.0,
+          "upper_back_angle": 68.0,
+          "left_shoulder_angle": 4.0,
+          "right_shoulder_angle": 4.0,
+          "action_level": 4,
+          "worst_body_part": "upper_back",
+          "deviation_severity": "severe",
+          "triggered_at": "2026-05-11T08:03:15Z"
+        }
+      },
+      {
+        "label": "Alert from scenario 05 — left shoulder",
+        "body": {
+          "device_id": "<DEVICE_ID>",
+          "session_id": "<SESSION_ID>",
+          "neck_angle": 5.0,
+          "upper_back_angle": 5.0,
+          "left_shoulder_angle": 50.0,
+          "right_shoulder_angle": 3.0,
+          "action_level": 3,
+          "worst_body_part": "left_shoulder",
+          "deviation_severity": "moderate",
+          "triggered_at": "2026-05-11T08:04:15Z"
+        }
+      },
+      {
+        "label": "Alert from scenario 07 — both shoulders raised + vibration",
+        "body": {
+          "device_id": "<DEVICE_ID>",
+          "session_id": "<SESSION_ID>",
+          "neck_angle": 10.0,
+          "upper_back_angle": 10.0,
+          "left_shoulder_angle": 92.0,
+          "right_shoulder_angle": 95.0,
+          "action_level": 4,
+          "worst_body_part": "left_shoulder",
+          "deviation_severity": "severe",
+          "triggered_at": "2026-05-11T08:06:15Z"
+        }
+      },
+      {
+        "label": "Alert from scenario 10 — worst case everything",
+        "body": {
+          "device_id": "<DEVICE_ID>",
+          "session_id": "<SESSION_ID>",
+          "neck_angle": 72.0,
+          "upper_back_angle": 72.0,
+          "left_shoulder_angle": 92.0,
+          "right_shoulder_angle": 90.0,
+          "action_level": 4,
+          "worst_body_part": "upper_back",
+          "deviation_severity": "severe",
+          "triggered_at": "2026-05-11T08:09:15Z"
+        }
+      },
+      {
+        "label": "Alert from scenario 11 — neck extension",
+        "body": {
+          "device_id": "<DEVICE_ID>",
+          "session_id": "<SESSION_ID>",
+          "neck_angle": -12.0,
+          "upper_back_angle": 0.0,
+          "left_shoulder_angle": 2.0,
+          "right_shoulder_angle": 2.0,
+          "action_level": 4,
+          "worst_body_part": "neck",
+          "deviation_severity": "severe",
+          "triggered_at": "2026-05-11T08:10:15Z"
+        }
+      }
+    ]
+  },
+
+  "step_08_end_session": {
+    "description": "End the session with computed averages from the 16 readings",
+    "method": "PATCH",
+    "endpoint": "/sessions/<SESSION_ID>/end",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "body": {
+      "avg_neck_angle": 22.4,
+      "avg_upper_back_angle": 22.4,
+      "avg_left_shoulder_angle": 18.6,
+      "avg_right_shoulder_angle": 16.2,
+      "avg_action_level": 2.6,
+      "total_alerts": 6,
+      "posture_score": 56.25
+    },
+    "expectedStatus": 200
+  },
+
+  "step_09_generate_daily_summary": {
+    "description": "Generate the daily summary for today after the session ends",
+    "method": "POST",
+    "endpoint": "/summaries/daily/generate",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "body": {},
+    "expectedStatus": 200,
+    "expectedResponse": {
+      "summary_date": "2026-05-11",
+      "avg_neck_angle": 22.4,
+      "avg_upper_back_angle": 22.4,
+      "total_alerts": 6,
+      "total_sessions": 1,
+      "good_posture_percentage": 37.5,
+      "posture_score": 56.25
+    }
+  },
+
+  "step_10_generate_weekly_summary": {
+    "description": "Generate weekly summary for the current week",
+    "method": "POST",
+    "endpoint": "/summaries/weekly/generate",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "body": {},
+    "expectedStatus": 200,
+    "expectedResponse": {
+      "week_start": "2026-05-11",
+      "week_end": "2026-05-17",
+      "avg_posture_score": 56.25,
+      "total_alerts": 6,
+      "total_sessions": 1,
+      "best_day": "2026-05-11",
+      "worst_day": "2026-05-11",
+      "improvement_percentage": null
+    }
+  },
+
+  "step_11_generate_monthly_summary": {
+    "description": "Generate monthly summary for May 2026",
+    "method": "POST",
+    "endpoint": "/summaries/monthly/generate",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "body": { "month": 5, "year": 2026 },
+    "expectedStatus": 200,
+    "expectedResponse": {
+      "month": 5,
+      "year": 2026,
+      "avg_posture_score": 56.25,
+      "total_alerts": 6,
+      "total_sessions": 1,
+      "improvement_vs_last_month": null
+    }
+  },
+
+  "step_12_ai_doctor_chat": {
+    "description": "Test AI Doctor chat — send 3 messages to test context awareness and conversation history",
+    "method": "POST",
+    "endpoint": "/ai/chat",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "messages_to_send_in_order": [
+      {
+        "turn": 1,
+        "body": { "message": "How was my posture today?" },
+        "expectedBehavior": "AI references today's session data — mentions 6 alerts, 56% posture score, and which body parts were most problematic"
+      },
+      {
+        "turn": 2,
+        "body": { "message": "My left shoulder keeps going up. What exercises can help?" },
+        "expectedBehavior": "AI gives specific shoulder exercises. Should remember context from turn 1 — knows this is the user's main problem area from today's data"
+      },
+      {
+        "turn": 3,
+        "body": { "message": "How long should I wear the shirt each day for best results?" },
+        "expectedBehavior": "AI gives a recommendation and ties it back to the user's profile — student, sitting for long hours. Should not give generic advice."
+      }
+    ]
+  },
+
+  "step_13_get_ai_history": {
+    "description": "Fetch the full AI chat history — should return all 6 messages (3 user + 3 assistant) in order",
+    "method": "GET",
+    "endpoint": "/ai/history",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "expectedStatus": 200,
+    "expectedResponse": {
+      "messages_count": 6,
+      "order": "chronological ascending",
+      "roles_alternating": true
+    }
+  },
+
+  "step_14_get_session_details": {
+    "description": "Fetch the full session with all readings — used by the history screen in the app",
+    "method": "GET",
+    "endpoint": "/sessions/<SESSION_ID>",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "expectedStatus": 200,
+    "expectedResponse": {
+      "session": { "id": "<SESSION_ID>", "total_alerts": 6, "posture_score": 56.25 }
+    }
+  },
+
+  "step_15_get_readings_for_session": {
+    "description": "Fetch all 16 readings for the session — used by the session detail screen",
+    "method": "GET",
+    "endpoint": "/readings/<SESSION_ID>",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "expectedStatus": 200,
+    "expectedResponse": {
+      "readings_count": 16,
+      "order": "chronological ascending"
+    }
+  },
+
+  "step_16_get_alerts_for_session": {
+    "description": "Fetch all alerts logged during the session — used by the alert history screen",
+    "method": "GET",
+    "endpoint": "/alerts?session_id=<SESSION_ID>",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "expectedStatus": 200,
+    "expectedResponse": {
+      "alerts_count": 6,
+      "severity_breakdown": {
+        "moderate": 2,
+        "severe": 4
+      }
+    }
+  },
+
+  "step_17_get_daily_summary": {
+    "description": "Fetch today's daily summary — used by the home screen summary card",
+    "method": "GET",
+    "endpoint": "/summaries/daily?date=2026-05-11",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "expectedStatus": 200
+  },
+
+  "step_18_get_daily_range": {
+    "description": "Fetch daily summaries for a date range — used by the weekly chart in the app",
+    "method": "GET",
+    "endpoint": "/summaries/daily/range?start=2026-05-05&end=2026-05-11",
+    "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+    "expectedStatus": 200,
+    "note": "Only 2026-05-11 will have data. Other days return empty/zero. Confirm the endpoint does not crash on empty days."
+  },
+
+  "step_19_error_cases": {
+    "description": "Test all error scenarios — confirm the backend handles bad input gracefully",
+    "cases": [
+      {
+        "label": "No token — should return 401",
+        "method": "GET",
+        "endpoint": "/sessions",
+        "headers": {},
+        "expectedStatus": 401
+      },
+      {
+        "label": "Wrong password — should return 401",
+        "method": "POST",
+        "endpoint": "/auth/login",
+        "body": { "email": "mohammad@jales.test", "password": "wrongpassword" },
+        "expectedStatus": 401
+      },
+      {
+        "label": "Empty readings array — should return 400",
+        "method": "POST",
+        "endpoint": "/readings",
+        "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+        "body": { "session_id": "<SESSION_ID>", "device_id": "<DEVICE_ID>", "readings": [] },
+        "expectedStatus": 400
+      },
+      {
+        "label": "Non-existent session — should return 404",
+        "method": "GET",
+        "endpoint": "/sessions/00000000-0000-0000-0000-000000000000",
+        "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+        "expectedStatus": 404
+      },
+      {
+        "label": "Duplicate device registration — should upsert not duplicate",
+        "method": "POST",
+        "endpoint": "/devices/register",
+        "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+        "body": { "mac_address": "AA:BB:CC:DD:EE:FF", "device_name": "JALES Shirt v1 Updated" },
+        "expectedStatus": 200,
+        "expectedBehavior": "Updates existing record — no second row created in devices table"
+      },
+      {
+        "label": "Daily summary with no readings — should not crash",
+        "method": "GET",
+        "endpoint": "/summaries/daily?date=2020-01-01",
+        "headers": { "Authorization": "Bearer <AUTH_TOKEN>" },
+        "expectedStatus": 200,
+        "expectedBehavior": "Returns null or zero values gracefully"
+      }
+    ]
+  },
+
+  "full_flow_order": [
+    "step_01_register",
+    "step_02_login",
+    "step_03_set_thresholds",
+    "step_04_register_device",
+    "step_05_start_session",
+    "step_06_posture_readings",
+    "step_07_log_alerts",
+    "step_08_end_session",
+    "step_09_generate_daily_summary",
+    "step_10_generate_weekly_summary",
+    "step_11_generate_monthly_summary",
+    "step_12_ai_doctor_chat",
+    "step_13_get_ai_history",
+    "step_14_get_session_details",
+    "step_15_get_readings_for_session",
+    "step_16_get_alerts_for_session",
+    "step_17_get_daily_summary",
+    "step_18_get_daily_range",
+    "step_19_error_cases"
+  ]
+}
